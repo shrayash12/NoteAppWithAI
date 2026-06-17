@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0A0A1A"/>
+      <stop offset="100%" style="stop-color:#1A0A2E"/>
+    </linearGradient>
+    <linearGradient id="penGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00F5FF"/>
+      <stop offset="100%" style="stop-color:#BF00FF"/>
+    </linearGradient>
+    <linearGradient id="noteGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1E1040"/>
+      <stop offset="100%" style="stop-color:#2D1B69"/>
+    </linearGradient>
+    <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00F5FF;stop-opacity:0.8"/>
+      <stop offset="100%" style="stop-color:#BF00FF;stop-opacity:0.2"/>
+    </linearGradient>
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="penGlow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Dark background -->
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+
+  <!-- Subtle grid dots -->
+  <circle cx="100" cy="100" r="2" fill="rgba(100,80,200,0.3)"/>
+  <circle cx="200" cy="80" r="2" fill="rgba(100,80,200,0.3)"/>
+  <circle cx="300" cy="100" r="2" fill="rgba(100,80,200,0.3)"/>
+  <circle cx="412" cy="100" r="2" fill="rgba(100,80,200,0.3)"/>
+  <circle cx="80" cy="200" r="2" fill="rgba(100,80,200,0.3)"/>
+  <circle cx="432" cy="200" r="2" fill="rgba(100,80,200,0.3)"/>
+  <circle cx="80" cy="312" r="2" fill="rgba(100,80,200,0.3)"/>
+  <circle cx="432" cy="312" r="2" fill="rgba(100,80,200,0.3)"/>
+  <circle cx="100" cy="412" r="2" fill="rgba(100,80,200,0.3)"/>
+  <circle cx="412" cy="412" r="2" fill="rgba(100,80,200,0.3)"/>
+
+  <!-- Note card (slightly tilted) -->
+  <g transform="translate(256,256) rotate(-6) translate(-110,-130)">
+    <rect width="220" height="260" rx="20" fill="url(#noteGrad)"
+          stroke="rgba(0,245,255,0.25)" stroke-width="1.5"/>
+    <!-- Lines on note -->
+    <rect x="24" y="50" width="172" height="7" rx="3.5" fill="url(#lineGrad)"/>
+    <rect x="24" y="74" width="140" height="7" rx="3.5" fill="url(#lineGrad)" opacity="0.7"/>
+    <rect x="24" y="98" width="160" height="7" rx="3.5" fill="url(#lineGrad)" opacity="0.5"/>
+    <rect x="24" y="122" width="100" height="7" rx="3.5" fill="url(#lineGrad)" opacity="0.3"/>
+    <!-- Left accent bar -->
+    <rect x="0" y="0" width="6" height="260" rx="3" fill="url(#penGrad)"/>
+  </g>
+
+  <!-- Second card behind (more tilted) -->
+  <g transform="translate(256,256) rotate(5) translate(-110,-130)" opacity="0.4">
+    <rect width="220" height="260" rx="20" fill="url(#noteGrad)"
+          stroke="rgba(191,0,255,0.3)" stroke-width="1.5"/>
+    <rect x="0" y="0" width="6" height="260" rx="3" fill="#BF00FF"/>
+  </g>
+
+  <!-- Glowing pen -->
+  <g filter="url(#penGlow)">
+    <!-- Pen body -->
+    <g transform="translate(310,160) rotate(45)">
+      <rect x="-8" y="-90" width="16" height="130" rx="4" fill="url(#penGrad)"/>
+      <!-- Pen tip -->
+      <polygon points="-8,40 8,40 0,68" fill="#00F5FF"/>
+      <!-- Pen top cap -->
+      <rect x="-8" y="-100" width="16" height="18" rx="4" fill="rgba(255,255,255,0.9)"/>
+      <!-- Pen clip -->
+      <rect x="5" y="-90" width="4" height="80" rx="2" fill="rgba(255,255,255,0.3)"/>
+    </g>
+  </g>
+
+  <!-- Neon glow trail from pen tip -->
+  <g filter="url(#softGlow)" opacity="0.8">
+    <circle cx="352" cy="338" r="8" fill="#00F5FF"/>
+    <circle cx="340" cy="350" r="5" fill="#00F5FF" opacity="0.6"/>
+    <circle cx="328" cy="358" r="3" fill="#00F5FF" opacity="0.3"/>
+  </g>
+
+  <!-- Star sparkles -->
+  <g filter="url(#neonGlow)">
+    <!-- Large star top right -->
+    <g transform="translate(390,108)">
+      <line x1="0" y1="-18" x2="0" y2="18" stroke="#00F5FF" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="-18" y1="0" x2="18" y2="0" stroke="#00F5FF" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="-12" y1="-12" x2="12" y2="12" stroke="#00F5FF" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="12" y1="-12" x2="-12" y2="12" stroke="#00F5FF" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="4" fill="white"/>
+    </g>
+    <!-- Small star bottom left -->
+    <g transform="translate(118,390)">
+      <line x1="0" y1="-10" x2="0" y2="10" stroke="#BF00FF" stroke-width="2" stroke-linecap="round"/>
+      <line x1="-10" y1="0" x2="10" y2="0" stroke="#BF00FF" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="3" fill="white"/>
+    </g>
+    <!-- Tiny dot accents -->
+    <circle cx="420" cy="160" r="3" fill="#BF00FF" opacity="0.8"/>
+    <circle cx="96" cy="150" r="2" fill="#00F5FF" opacity="0.6"/>
+    <circle cx="430" cy="370" r="2.5" fill="#00F5FF" opacity="0.5"/>
+  </g>
+</svg>
