@@ -177,3 +177,35 @@ FAB → `CreateNoteModal` → routes to the appropriate note creation screen/mod
 - `reorderNotes` is local-only (Firestore doesn't support custom order easily)
 - File helpers use conditional imports (`file_helper.dart`) for web/IO platform split
 - Settings are saved to `SharedPreferences` immediately on change
+
+---
+
+## Changelog
+
+### 2026-06-17 — Import Notes Feature
+
+#### Added
+- **`lib/widgets/import_notes_sheet.dart`** — New bottom sheet widget for importing notes from external apps
+  - **Google Keep** import: parses `.json` files exported via Google Takeout
+    - Preserves title, content, pinned state, checklist items, labels (as tags), and timestamps
+    - Trashed notes are automatically skipped
+    - Checklist notes imported as `NoteType.checklist` with `ChecklistItem` list
+  - **Text / Markdown** import: parses `.txt` and `.md` files
+    - First `#` heading in `.md` files used as note title
+    - Works with Apple Notes, Obsidian, Notion, Bear exports
+
+#### Modified
+- **`lib/screens/settings_screen.dart`**
+  - Added `DATA` section below Security
+  - Added `Import Notes` tile → opens `ImportNotesSheet` as modal bottom sheet
+- **`pubspec.yaml`**
+  - Added `file_picker: ^8.0.0` dependency
+- **`.gitignore`**
+  - Added `google-services.json`, `GoogleService-Info.plist`, `lib/firebase_options.dart` to prevent Firebase secrets from being committed
+
+#### Bug Fix (same session)
+- **`lib/widgets/import_notes_sheet.dart`** — Fixed file picker not responding on Android 9 (Moto G8, API 28)
+  - Root cause: `FileType.custom` with `allowedExtensions` silently fails on older Android due to SAF MIME type filtering limitations
+  - Fix: switched to `FileType.any` + `withData: true`, filter by file extension after picking
+  - Added `try-catch` around `FilePicker.platform.pickFiles()` with user-facing SnackBar error messages
+  - Added orange SnackBar guidance when wrong file type is selected
