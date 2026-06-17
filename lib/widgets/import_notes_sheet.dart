@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
@@ -22,12 +23,46 @@ class _ImportNotesSheetState extends State<ImportNotesSheet> {
   // ── Google Keep JSON import ───────────────────────────────────────────────
 
   Future<void> _importGoogleKeep() async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: true,
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-    );
+    // Use FileType.any + withData:true for Android compatibility.
+    // FileType.custom with allowedExtensions fails silently on Android 9
+    // because the SAF file picker doesn't handle JSON MIME filtering well.
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.any,
+        withData: true,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open file picker: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
     if (result == null || result.files.isEmpty) return;
+
+    // Filter to .json files after picking
+    final jsonFiles = result.files
+        .where((f) => f.name.toLowerCase().endsWith('.json'))
+        .toList();
+
+    if (jsonFiles.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select .json files exported from Google Keep'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() {
       _importing = true;
@@ -35,28 +70,66 @@ class _ImportNotesSheetState extends State<ImportNotesSheet> {
     });
 
     final notes = <Note>[];
-    for (final file in result.files) {
-      if (file.path == null) continue;
+    for (final file in jsonFiles) {
       try {
-        final raw = File(file.path!).readAsStringSync();
+        String raw;
+        if (file.bytes != null) {
+          raw = String.fromCharCodes(file.bytes!);
+        } else if (file.path != null) {
+          raw = File(file.path!).readAsStringSync();
+        } else {
+          continue;
+        }
         final json = jsonDecode(raw) as Map<String, dynamic>;
         final note = _parseGoogleKeepJson(json);
         if (note != null) notes.add(note);
       } catch (_) {}
     }
 
-    await _uploadNotes(notes, result.files.length);
+    await _uploadNotes(notes, jsonFiles.length);
   }
 
   // ── Text / Markdown import ────────────────────────────────────────────────
 
   Future<void> _importTextFiles() async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: true,
-      type: FileType.custom,
-      allowedExtensions: ['txt', 'md'],
-    );
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.any,
+        withData: true,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open file picker: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
     if (result == null || result.files.isEmpty) return;
+
+    // Filter to .txt and .md files after picking
+    final textFiles = result.files.where((f) {
+      final name = f.name.toLowerCase();
+      return name.endsWith('.txt') || name.endsWith('.md');
+    }).toList();
+
+    if (textFiles.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select .txt or .md files'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() {
       _importing = true;
@@ -64,13 +137,12 @@ class _ImportNotesSheetState extends State<ImportNotesSheet> {
     });
 
     final notes = <Note>[];
-    for (final file in result.files) {
-      if (file.path == null) continue;
-      final note = _parseTextFile(File(file.path!), file.name);
+    for (final file in textFiles) {
+      final note = _parseTextFile(file.bytes, file.path, file.name);
       if (note != null) notes.add(note);
     }
 
-    await _uploadNotes(notes, result.files.length);
+    await _uploadNotes(notes, textFiles.length);
   }
 
   // ── Save parsed notes to Firestore ───────────────────────────────────────
@@ -119,9 +191,16 @@ class _ImportNotesSheetState extends State<ImportNotesSheet> {
 
   // ── Parsers ───────────────────────────────────────────────────────────────
 
-  Note? _parseTextFile(File file, String filename) {
+  Note? _parseTextFile(Uint8List? bytes, String? path, String filename) {
     try {
-      final content = file.readAsStringSync();
+      String content;
+      if (bytes != null) {
+        content = String.fromCharCodes(bytes);
+      } else if (path != null) {
+        content = File(path).readAsStringSync();
+      } else {
+        return null;
+      }
       if (content.trim().isEmpty) return null;
 
       final lines = content.split('\n');
