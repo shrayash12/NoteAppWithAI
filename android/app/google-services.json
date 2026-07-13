@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "186920755881",
+    "project_id": "smartnotes-15d14",
+    "storage_bucket": "smartnotes-15d14.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:186920755881:android:2d9317d64df86ace0dffb8",
+        "android_client_info": {
+          "package_name": "com.smartnotesai.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDptYTrpRStK4gR2pBYhCcDCKse0r7VPcQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:186920755881:android:2ccc2524691c2a7a0dffb8",
+        "android_client_info": {
+          "package_name": "io.flutter.plugins.firebase.firestore.example"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDptYTrpRStK4gR2pBYhCcDCKse0r7VPcQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
