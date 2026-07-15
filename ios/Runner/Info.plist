@@ -28,6 +28,14 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Used to unlock locked notes</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to take photos and scan documents for your notes</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Used to attach photos from your library to your notes</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Used to save photos from your notes to your library</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Used to record voice notes</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
