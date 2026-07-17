@@ -63,11 +63,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCzEg2bL3DrjOQME-0ABKfZKJeusP4nX0k',
-    appId: '1:186920755881:ios:1855ec233373d1d40dffb8',
+    appId: '1:186920755881:ios:851cdc82b8ba7bcb0dffb8',
     messagingSenderId: '186920755881',
     projectId: 'smartnotes-15d14',
     storageBucket: 'smartnotes-15d14.firebasestorage.app',
-    iosBundleId: 'com.example.smartnotesApp',
+    iosClientId: '186920755881-q444sc5bng3meet4d4gbf66vihua8ddn.apps.googleusercontent.com',
+    iosBundleId: 'com.shradharathod.smartnotes',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(

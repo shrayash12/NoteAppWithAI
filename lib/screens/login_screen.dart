@@ -1,9 +1,13 @@
+import 'dart:convert';
+import 'dart:io' show Platform;
 import 'dart:math' as math;
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../providers/notes_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/google_signin_web_button.dart';
@@ -157,6 +161,67 @@ class _LoginScreenState extends State<LoginScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Sign-in failed: ${e.description ?? e.code}'),
+              backgroundColor: Colors.red.shade400,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSigningIn = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sign-in failed: ${e.toString()}'),
+            backgroundColor: Colors.red.shade400,
+          ),
+        );
+      }
+    }
+  }
+
+  static bool get _supportsAppleSignIn => !kIsWeb && Platform.isIOS;
+
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = math.Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
+        .join();
+  }
+
+  String _sha256ofString(String input) =>
+      sha256.convert(utf8.encode(input)).toString();
+
+  Future<void> _signInWithApple() async {
+    if (_isSigningIn) return;
+    setState(() => _isSigningIn = true);
+    try {
+      final rawNonce = _generateNonce();
+      final hashedNonce = _sha256ofString(rawNonce);
+
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: hashedNonce,
+      );
+
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
+        rawNonce: rawNonce,
+      );
+
+      await FirebaseAuth.instance.signInWithCredential(oauthCredential);
+      // AuthWrapper will handle navigation
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (mounted) {
+        setState(() => _isSigningIn = false);
+        if (e.code != AuthorizationErrorCode.canceled) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Sign-in failed: ${e.message}'),
               backgroundColor: Colors.red.shade400,
             ),
           );
@@ -372,6 +437,25 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ),
                     ),
+
+                    if (_supportsAppleSignIn) ...[
+                      const SizedBox(height: 14),
+                      FadeTransition(
+                        opacity: _buttonFade,
+                        child: SlideTransition(
+                          position: _buttonSlide,
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 58,
+                            child: SignInWithAppleButton(
+                              onPressed: _isSigningIn ? null : _signInWithApple,
+                              height: 58,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 28),
 
