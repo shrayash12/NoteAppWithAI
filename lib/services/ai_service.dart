@@ -2,9 +2,11 @@ import 'package:cloud_functions/cloud_functions.dart';
 
 /// Thrown when an AI request can't be completed.
 class AIServiceException implements Exception {
-  final String code; // 'empty_input' | 'unauthenticated' | 'request_failed'
+  final String code; // 'empty_input' | 'unauthenticated' | 'quota_exceeded' | 'request_failed'
   final String message;
   AIServiceException(this.code, this.message);
+
+  bool get isQuotaExceeded => code == 'quota_exceeded';
 
   @override
   String toString() => message;
@@ -38,6 +40,12 @@ class AIService {
     } on FirebaseFunctionsException catch (e) {
       if (e.code == 'unauthenticated') {
         throw AIServiceException('unauthenticated', 'Please sign in to use AI features.');
+      }
+      if (e.code == 'resource-exhausted') {
+        throw AIServiceException(
+          'quota_exceeded',
+          e.message ?? 'You\'ve reached your AI usage limit for this period.',
+        );
       }
       throw AIServiceException('request_failed', e.message ?? 'AI request failed.');
     } on AIServiceException {

@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/notes_provider.dart';
+import '../providers/usage_provider.dart';
+import '../services/subscription_service.dart';
 import '../widgets/shimmer_widgets.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
@@ -35,7 +37,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
     FirebaseAuth.instance.authStateChanges().listen((user) {
       if (!mounted) return;
       final notesProvider = context.read<NotesProvider>();
+      final usageProvider = context.read<UsageProvider>();
       if (user != null) {
+        SubscriptionService.login(user.uid);
+        usageProvider.refresh();
         if (_splashDone) {
           // Splash already done — load immediately (e.g. user just signed in)
           notesProvider.loadNotes(userId: user.uid);
@@ -46,6 +51,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
       } else {
         _pendingUser = null;
         notesProvider.clearOnSignOut();
+        usageProvider.clear();
+        SubscriptionService.logout();
       }
     });
   }

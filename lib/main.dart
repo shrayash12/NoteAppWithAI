@@ -10,10 +10,12 @@ import 'l10n/app_localizations.dart';
 import 'models/note.dart';
 import 'providers/notes_provider.dart';
 import 'providers/locale_provider.dart';
+import 'providers/usage_provider.dart';
 import 'screens/auth_wrapper.dart';
 import 'screens/main_screen.dart';
 import 'screens/text_note_screen.dart';
 import 'screens/checklist_screen.dart';
+import 'services/subscription_service.dart';
 import 'theme/app_theme.dart';
 import 'utils/notification_service.dart';
 import 'widgets/photo_preview_modal.dart';
@@ -44,6 +46,7 @@ void main() async {
   });
 
   await NotificationService.initialize();
+  await SubscriptionService.configure();
 
   NotificationService.noteTapStream.listen((noteId) async {
     final ctx = navigatorKey.currentContext;
@@ -98,6 +101,7 @@ class SmartNotesApp extends StatelessWidget {
           create: (_) => NotesProvider()..loadPreferences(),
         ),
         ChangeNotifierProvider(create: (_) => LocaleProvider()),
+        ChangeNotifierProvider(create: (_) => UsageProvider()),
       ],
       child: Consumer2<NotesProvider, LocaleProvider>(
         builder: (context, notesProvider, localeProvider, child) {

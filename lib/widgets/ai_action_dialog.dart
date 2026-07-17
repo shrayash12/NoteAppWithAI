@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../models/note.dart';
+import '../models/subscription.dart';
 import '../providers/notes_provider.dart';
+import '../providers/usage_provider.dart';
+import '../screens/upgrade_screen.dart';
 import '../services/ai_service.dart';
 import '../theme/app_theme.dart';
 
@@ -68,6 +71,17 @@ class _AIActionSheetState extends State<_AIActionSheet> {
     }
   }
 
+  AIFeature get _feature {
+    switch (widget.type) {
+      case AIActionType.enhance:
+        return AIFeature.enhance;
+      case AIActionType.summarize:
+        return AIFeature.summarize;
+      case AIActionType.translate:
+        return AIFeature.translate;
+    }
+  }
+
   Future<void> _run() async {
     final l10n = AppLocalizations.of(context);
     setState(() {
@@ -95,8 +109,19 @@ class _AIActionSheetState extends State<_AIActionSheet> {
         _result = output;
         _loading = false;
       });
+      context.read<UsageProvider>().refresh();
     } on AIServiceException catch (e) {
       if (!mounted) return;
+      if (e.isQuotaExceeded) {
+        setState(() => _loading = false);
+        context.read<UsageProvider>().refresh();
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
+        return;
+      }
       setState(() {
         _loading = false;
         _error = e.code == 'empty_input' ? l10n.aiErrorEmptyInput : e.message;
@@ -167,12 +192,32 @@ class _AIActionSheetState extends State<_AIActionSheet> {
                     child: Icon(_icon, color: Colors.white, size: 22),
                   ),
                   const SizedBox(width: 14),
-                  Text(
-                    _titleFor(l10n),
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.getTextPrimaryColor(context),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _titleFor(l10n),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.getTextPrimaryColor(context),
+                          ),
+                        ),
+                        Builder(
+                          builder: (context) {
+                            final usage = context.watch<UsageProvider>().usageFor(_feature);
+                            if (usage == null) return const SizedBox.shrink();
+                            return Text(
+                              '${usage.remaining} of ${usage.limit} left this period',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.getTextSecondaryColor(context),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 ],

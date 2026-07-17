@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/note.dart';
+import '../models/subscription.dart';
 import '../providers/notes_provider.dart';
+import '../providers/usage_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/create_note_modal.dart';
@@ -217,6 +219,11 @@ class _AIFloatingButtonState extends State<_AIFloatingButton>
   void _showAIPanel(BuildContext context) {
     final colorIndex = context.read<NotesProvider>().themeColorIndex;
     final gradient = AppTheme.accentGradient(colorIndex);
+    final usage = context.read<UsageProvider>();
+    String usageLabel(AIFeature feature) {
+      final u = usage.usageFor(feature);
+      return u == null ? '' : '${u.remaining} of ${u.limit} left';
+    }
 
     showModalBottomSheet(
       context: context,
@@ -280,6 +287,7 @@ class _AIFloatingButtonState extends State<_AIFloatingButton>
               icon: Icons.auto_fix_high,
               label: 'Enhance Writing',
               description: 'Improve grammar & style',
+              usageLabel: usageLabel(AIFeature.enhance),
               gradient: gradient,
               onTap: () {
                 Navigator.pop(context);
@@ -291,6 +299,7 @@ class _AIFloatingButtonState extends State<_AIFloatingButton>
               icon: Icons.summarize,
               label: 'Summarize',
               description: 'Get a quick summary',
+              usageLabel: usageLabel(AIFeature.summarize),
               gradient: gradient,
               onTap: () {
                 Navigator.pop(context);
@@ -302,6 +311,7 @@ class _AIFloatingButtonState extends State<_AIFloatingButton>
               icon: Icons.translate,
               label: 'Translate',
               description: 'Translate to any language',
+              usageLabel: usageLabel(AIFeature.translate),
               gradient: gradient,
               onTap: () {
                 Navigator.pop(context);
@@ -356,6 +366,7 @@ class _AIFeatureTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final String description;
+  final String usageLabel;
   final List<Color> gradient;
   final VoidCallback onTap;
 
@@ -363,6 +374,7 @@ class _AIFeatureTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.description,
+    this.usageLabel = '',
     required this.gradient,
     required this.onTap,
   });
@@ -411,6 +423,17 @@ class _AIFeatureTile extends StatelessWidget {
                 ],
               ),
             ),
+            if (usageLabel.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  usageLabel,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.getTextSecondaryColor(context),
+                  ),
+                ),
+              ),
             Icon(Icons.chevron_right, color: AppTheme.getIconColor(context)),
           ],
         ),

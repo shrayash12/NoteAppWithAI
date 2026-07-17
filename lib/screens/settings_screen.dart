@@ -4,8 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
 import '../l10n/app_localizations.dart';
+import '../models/subscription.dart';
 import '../providers/notes_provider.dart';
 import '../providers/locale_provider.dart';
+import '../providers/usage_provider.dart';
+import '../screens/upgrade_screen.dart';
 import '../theme/app_theme.dart';
 import '../widgets/gradient_header.dart';
 import '../utils/notification_service.dart';
@@ -137,6 +140,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         await FirebaseAuth.instance.signOut();
                         // AuthWrapper will navigate to LoginScreen
                       },
+                    ),
+                    const SizedBox(height: 24),
+                    // ── Subscription Section ────────────────────────────
+                    Text(
+                      'SUBSCRIPTION',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: textSecondary,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Consumer<UsageProvider>(
+                        builder: (context, usage, _) {
+                          return _SettingsTile(
+                            icon: Icons.workspace_premium_outlined,
+                            title: 'Manage Subscription',
+                            subtitle: usage.plan.displayName,
+                            iconColor: iconColor,
+                            textColor: textPrimary,
+                            trailing: Icon(Icons.chevron_right, color: textSecondary),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+                              );
+                            },
+                          );
+                        },
+                      ),
                     ),
                     const SizedBox(height: 24),
                     // Preferences Section
