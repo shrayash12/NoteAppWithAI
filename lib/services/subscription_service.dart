@@ -21,7 +21,7 @@ class SubscriptionService {
   // TODO: replace with your real RevenueCat public SDK keys, from
   // https://app.revenuecat.com -> Project settings -> API keys.
   // These are safe to ship in the client (public keys), unlike the Gemini key.
-  static const _iosApiKey = 'appl_REPLACE_ME';
+  static const _iosApiKey = 'appl_amiVdfVJQFLDQLZEyqGpllcYOek';
   static const _androidApiKey = 'goog_REPLACE_ME';
 
   static bool _configured = false;
@@ -30,10 +30,9 @@ class SubscriptionService {
   /// until real API keys are set above.
   static Future<void> configure() async {
     if (_configured || kIsWeb) return;
-    final placeholder = _iosApiKey.contains('REPLACE_ME') || _androidApiKey.contains('REPLACE_ME');
-    if (placeholder) return;
+    final apiKey = Platform.isIOS || Platform.isMacOS ? _iosApiKey : _androidApiKey;
+    if (apiKey.contains('REPLACE_ME')) return;
     try {
-      final apiKey = Platform.isIOS || Platform.isMacOS ? _iosApiKey : _androidApiKey;
       await Purchases.configure(PurchasesConfiguration(apiKey));
       _configured = true;
     } catch (_) {

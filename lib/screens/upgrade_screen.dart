@@ -154,7 +154,7 @@ class _UpgradeScreenState extends State<UpgradeScreen> {
                       const SizedBox(height: 16),
                       _PlanCard(
                         title: 'Pro Monthly',
-                        price: '₹120',
+                        price: current?.monthly?.storeProduct.priceString ?? '₹120',
                         period: '/month',
                         bullets: const [
                           '300 AI Summaries / month',
@@ -175,7 +175,7 @@ class _UpgradeScreenState extends State<UpgradeScreen> {
                       const SizedBox(height: 16),
                       _PlanCard(
                         title: 'Pro Yearly',
-                        price: '₹999',
+                        price: current?.annual?.storeProduct.priceString ?? '₹999',
                         period: '/year',
                         badge: 'Best value',
                         bullets: const [
