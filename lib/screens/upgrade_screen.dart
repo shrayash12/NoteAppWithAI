@@ -19,8 +19,11 @@ class UpgradeScreen extends StatefulWidget {
 class _UpgradeScreenState extends State<UpgradeScreen> {
   Offerings? _offerings;
   bool _loading = true;
-  bool _purchasing = false;
+  String? _purchasingPackageId;
+  bool _restoring = false;
   String? _error;
+
+  bool get _busy => _purchasingPackageId != null || _restoring;
 
   @override
   void initState() {
@@ -50,8 +53,8 @@ class _UpgradeScreenState extends State<UpgradeScreen> {
   }
 
   Future<void> _buy(Package? package) async {
-    if (package == null || _purchasing) return;
-    setState(() => _purchasing = true);
+    if (package == null || _busy) return;
+    setState(() => _purchasingPackageId = package.identifier);
     try {
       await SubscriptionService.purchase(package);
       if (!mounted) return;
@@ -67,12 +70,13 @@ class _UpgradeScreenState extends State<UpgradeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } finally {
-      if (mounted) setState(() => _purchasing = false);
+      if (mounted) setState(() => _purchasingPackageId = null);
     }
   }
 
   Future<void> _restore() async {
-    setState(() => _purchasing = true);
+    if (_busy) return;
+    setState(() => _restoring = true);
     try {
       await SubscriptionService.restore();
       if (!mounted) return;
@@ -85,7 +89,7 @@ class _UpgradeScreenState extends State<UpgradeScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } finally {
-      if (mounted) setState(() => _purchasing = false);
+      if (mounted) setState(() => _restoring = false);
     }
   }
 
@@ -104,7 +108,7 @@ class _UpgradeScreenState extends State<UpgradeScreen> {
         title: const Text('Upgrade to Pro'),
         actions: [
           TextButton(
-            onPressed: _purchasing ? null : _restore,
+            onPressed: _busy ? null : _restore,
             child: const Text('Restore'),
           ),
         ],
@@ -166,8 +170,8 @@ class _UpgradeScreenState extends State<UpgradeScreen> {
                         trailing: current?.monthly != null
                             ? _BuyButton(
                                 gradient: gradient,
-                                enabled: !_purchasing && plan != Plan.proMonthly,
-                                loading: _purchasing,
+                                enabled: !_busy && plan != Plan.proMonthly,
+                                loading: _purchasingPackageId == current?.monthly?.identifier,
                                 onTap: () => _buy(current?.monthly),
                               )
                             : null,
@@ -188,8 +192,8 @@ class _UpgradeScreenState extends State<UpgradeScreen> {
                         trailing: current?.annual != null
                             ? _BuyButton(
                                 gradient: gradient,
-                                enabled: !_purchasing && plan != Plan.proYearly,
-                                loading: _purchasing,
+                                enabled: !_busy && plan != Plan.proYearly,
+                                loading: _purchasingPackageId == current?.annual?.identifier,
                                 onTap: () => _buy(current?.annual),
                               )
                             : null,
