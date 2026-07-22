@@ -49,10 +49,10 @@ class _GradientHeaderState extends State<GradientHeader> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 16,
+        top: MediaQuery.of(context).padding.top + 10,
         left: 20,
         right: 20,
-        bottom: 16,
+        bottom: 12,
       ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -81,18 +81,18 @@ class _GradientHeaderState extends State<GradientHeader> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
                     Icons.auto_awesome,
                     color: Colors.white,
-                    size: 24,
+                    size: 20,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -120,6 +120,9 @@ class _GradientHeaderState extends State<GradientHeader> {
             children: [
               if (widget.searchBar != null)
                 IconButton(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(),
                   onPressed: () {
                     if (_showSearch) {
                       _closeSearch();
@@ -135,6 +138,9 @@ class _GradientHeaderState extends State<GradientHeader> {
               if (!_showSearch) ...[
                 if (widget.onViewToggle != null)
                   IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
                     onPressed: widget.onViewToggle,
                     icon: Icon(
                       widget.isGridView ? Icons.view_list : Icons.grid_view,
@@ -145,6 +151,9 @@ class _GradientHeaderState extends State<GradientHeader> {
                   Stack(
                     children: [
                       IconButton(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(),
                         onPressed: widget.onFilterTap,
                         icon: const Icon(
                           Icons.filter_list,
