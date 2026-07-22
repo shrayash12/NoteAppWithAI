@@ -6,10 +6,10 @@ import '../providers/notes_provider.dart';
 import '../l10n/app_localizations.dart';
 
 
-class GradientHeader extends StatelessWidget {
+class GradientHeader extends StatefulWidget {
   final String title;
   final String? subtitle;
-  final Widget? searchBar;
+  final SearchBarWidget? searchBar;
   final double height;
   final bool isGridView;
   final VoidCallback? onViewToggle;
@@ -31,6 +31,18 @@ class GradientHeader extends StatelessWidget {
   });
 
   @override
+  State<GradientHeader> createState() => _GradientHeaderState();
+}
+
+class _GradientHeaderState extends State<GradientHeader> {
+  bool _showSearch = false;
+
+  void _closeSearch() {
+    setState(() => _showSearch = false);
+    context.read<NotesProvider>().clearSearch();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colorIndex = context.watch<NotesProvider>().themeColorIndex;
     final gradientColors = AppTheme.accentGradient(colorIndex);
@@ -40,7 +52,7 @@ class GradientHeader extends StatelessWidget {
         top: MediaQuery.of(context).padding.top + 16,
         left: 20,
         right: 20,
-        bottom: 20,
+        bottom: 16,
       ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -53,94 +65,110 @@ class GradientHeader extends StatelessWidget {
           bottomRight: Radius.circular(24),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.auto_awesome,
-                      color: Colors.white,
-                      size: 24,
-                    ),
+          if (_showSearch && widget.searchBar != null)
+            Expanded(
+              child: SearchBarWidget(
+                hintText: widget.searchBar!.hintText,
+                onChanged: widget.searchBar!.onChanged,
+                onNoteSelected: widget.searchBar!.onNoteSelected,
+                autofocus: true,
+              ),
+            )
+          else
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (widget.subtitle != null && widget.subtitle!.isNotEmpty)
                       Text(
-                        title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                        widget.subtitle!,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 14,
                         ),
                       ),
-                      if (subtitle != null && subtitle!.isNotEmpty)
-                        Text(
-                          subtitle!,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 14,
+                  ],
+                ),
+              ],
+            ),
+          Row(
+            children: [
+              if (widget.searchBar != null)
+                IconButton(
+                  onPressed: () {
+                    if (_showSearch) {
+                      _closeSearch();
+                    } else {
+                      setState(() => _showSearch = true);
+                    }
+                  },
+                  icon: Icon(
+                    _showSearch ? Icons.close : Icons.search,
+                    color: Colors.white,
+                  ),
+                ),
+              if (!_showSearch) ...[
+                if (widget.onViewToggle != null)
+                  IconButton(
+                    onPressed: widget.onViewToggle,
+                    icon: Icon(
+                      widget.isGridView ? Icons.view_list : Icons.grid_view,
+                      color: Colors.white,
+                    ),
+                  ),
+                if (widget.showFilter)
+                  Stack(
+                    children: [
+                      IconButton(
+                        onPressed: widget.onFilterTap,
+                        icon: const Icon(
+                          Icons.filter_list,
+                          color: Colors.white,
+                        ),
+                      ),
+                      if (widget.hasActiveFilters)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: Colors.orange,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ),
                     ],
                   ),
-                ],
-              ),
-              Row(
-                children: [
-                  if (onViewToggle != null)
-                    IconButton(
-                      onPressed: onViewToggle,
-                      icon: Icon(
-                        isGridView ? Icons.view_list : Icons.grid_view,
-                        color: Colors.white,
-                      ),
-                    ),
-                  if (showFilter)
-                    Stack(
-                      children: [
-                        IconButton(
-                          onPressed: onFilterTap,
-                          icon: const Icon(
-                            Icons.filter_list,
-                            color: Colors.white,
-                          ),
-                        ),
-                        if (hasActiveFilters)
-                          Positioned(
-                            right: 8,
-                            top: 8,
-                            child: Container(
-                              width: 10,
-                              height: 10,
-                              decoration: const BoxDecoration(
-                                color: Colors.orange,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                ],
-              ),
+              ],
             ],
           ),
-          if (searchBar != null) ...[
-            const SizedBox(height: 16),
-            searchBar!,
-          ],
         ],
       ),
     );
@@ -151,12 +179,14 @@ class SearchBarWidget extends StatefulWidget {
   final String hintText;
   final ValueChanged<String>? onChanged;
   final Function(Note)? onNoteSelected;
+  final bool autofocus;
 
   const SearchBarWidget({
     super.key,
     this.hintText = '',
     this.onChanged,
     this.onNoteSelected,
+    this.autofocus = false,
   });
 
   @override
@@ -294,7 +324,12 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
               child: TextField(
                 controller: _controller,
                 focusNode: _focusNode,
+                autofocus: widget.autofocus,
                 onChanged: _updateSuggestions,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 16,
+                ),
                 decoration: InputDecoration(
                   hintText: widget.hintText.isNotEmpty ? widget.hintText : AppLocalizations.of(context).searchNotes,
                   hintStyle: TextStyle(
