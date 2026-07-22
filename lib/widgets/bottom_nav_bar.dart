@@ -48,12 +48,12 @@ class CustomBottomNavBar extends StatelessWidget {
             final indicatorLeft = slotW * slot + (slotW - indicatorW) / 2;
 
             return SizedBox(
-              height: 62,
+              height: 52,
               child: Stack(
                 children: [
                   // ── Nav row ──────────────────────────────────────────────
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
                       children: [
                         Expanded(
@@ -175,7 +175,7 @@ class _NavItemState extends State<_NavItem> {
                 widget.isSelected ? widget.activeIcon : widget.icon,
                 key: ValueKey(widget.isSelected),
                 color: color,
-                size: 24,
+                size: 20,
               ),
             ),
             const SizedBox(height: 2),
@@ -183,7 +183,7 @@ class _NavItemState extends State<_NavItem> {
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
                 color: color,
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight:
                     widget.isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
