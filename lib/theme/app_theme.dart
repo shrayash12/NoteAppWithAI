@@ -285,9 +285,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(24),
         ),
       ),
-      snackBarTheme: SnackBarThemeData(
+      snackBarTheme: const SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: _darkSurface,
+        contentTextStyle: TextStyle(color: _darkTextPrimary, fontSize: 14),
       ),
       dividerTheme: DividerThemeData(
         color: Colors.white.withOpacity(0.1),

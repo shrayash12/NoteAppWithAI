@@ -180,28 +180,6 @@ class _HomeScreenState extends State<HomeScreen> {
               onFilterTap: () => showFilterBottomSheet(context),
               hasActiveFilters: notesProvider.hasActiveFilters,
             ),
-            // Stats Cards
-            if (notesProvider.isLoading)
-              const ShimmerStatCards()
-            else
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Builder(builder: (context) {
-                  final idx = notesProvider.themeColorIndex;
-                  final grad = AppTheme.accentGradient(idx);
-                  final g1 = LinearGradient(colors: [grad[0], grad[1]]);
-                  final g2 = LinearGradient(colors: [grad[1], grad[0]]);
-                  return Row(
-                    children: [
-                      Expanded(child: _StatCard(value: notesProvider.totalNotes.toString(), label: l10n.statTotal, gradient: g1)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _StatCard(value: notesProvider.voiceNotes.toString(), label: l10n.navVoice, gradient: g2)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _StatCard(value: notesProvider.favoriteNotes.toString(), label: l10n.statFavorites, gradient: g1)),
-                    ],
-                  );
-                }),
-              ),
             // Filter Tabs
             if (!notesProvider.isLoading)
               Padding(
@@ -215,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemBuilder: (context, index) {
                       final isSelected = _selectedFilterIndex == index;
                       final isPressed = _pressedFilterIndex == index;
-                      final accentColor = AppTheme.accentGradient(notesProvider.themeColorIndex)[0];
+                      final grad = AppTheme.accentGradient(notesProvider.themeColorIndex);
                       return GestureDetector(
                         onTapDown: (_) => setState(() => _pressedFilterIndex = index),
                         onTapUp: (_) {
@@ -233,37 +211,46 @@ class _HomeScreenState extends State<HomeScreen> {
                           scale: isPressed ? 0.92 : 1.0,
                           duration: const Duration(milliseconds: 100),
                           curve: Curves.easeOut,
-                          child: AnimatedContainer(
+                          child: AnimatedOpacity(
+                            opacity: isSelected ? 1.0 : 0.55,
                             duration: const Duration(milliseconds: 250),
                             curve: Curves.easeOut,
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected ? accentColor.withOpacity(0.15) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isSelected ? accentColor : AppTheme.getDividerColor(context),
-                                width: isSelected ? 2.0 : 1,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOut,
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(colors: [grad[0], grad[1]]),
+                                borderRadius: BorderRadius.circular(20),
+                                border: isSelected
+                                    ? Border.all(color: Colors.white, width: 2.0)
+                                    : null,
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: grad[0].withOpacity(0.4),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
                               ),
-                            ),
-                            child: Row(
-                              children: [
-                                AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 200),
-                                  child: Icon(_filterIcons[index], key: ValueKey(isSelected), size: 16,
-                                    color: isSelected ? accentColor : AppTheme.getTextSecondaryColor(context)),
-                                ),
-                                const SizedBox(width: 6),
-                                AnimatedDefaultTextStyle(
-                                  duration: const Duration(milliseconds: 200),
-                                  style: TextStyle(
-                                    color: isSelected ? accentColor : AppTheme.getTextSecondaryColor(context),
-                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
-                                    fontSize: 13,
+                              child: Row(
+                                children: [
+                                  Icon(_filterIcons[index], size: 16, color: Colors.white),
+                                  const SizedBox(width: 6),
+                                  AnimatedDefaultTextStyle(
+                                    duration: const Duration(milliseconds: 200),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                                      fontSize: 13,
+                                    ),
+                                    child: Text(filters[index]),
                                   ),
-                                  child: Text(filters[index]),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -1901,49 +1888,6 @@ class _NoteCard extends StatelessWidget {
             style: TextStyle(
               color: Colors.grey.shade500,
               fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String value;
-  final String label;
-  final LinearGradient gradient;
-
-  const _StatCard({
-    required this.value,
-    required this.label,
-    required this.gradient,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 11,
             ),
           ),
         ],
