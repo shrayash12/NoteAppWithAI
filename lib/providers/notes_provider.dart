@@ -192,24 +192,19 @@ class NotesProvider extends ChangeNotifier {
       filtered = filtered.where((n) => n.isLocked).toList();
     }
 
-    // Sort
-    switch (_filter.sortOrder) {
-      case SortOrder.newest:
-        filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        break;
-      case SortOrder.oldest:
-        filtered.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-        break;
-      case SortOrder.alphabetical:
-        filtered.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-        break;
-    }
-
-    // Pinned notes always first
+    // Sort: pinned notes always first, then by chosen sort order within each group
     filtered.sort((a, b) {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return 0;
+      if (a.isPinned != b.isPinned) {
+        return a.isPinned ? -1 : 1;
+      }
+      switch (_filter.sortOrder) {
+        case SortOrder.newest:
+          return b.createdAt.compareTo(a.createdAt);
+        case SortOrder.oldest:
+          return a.createdAt.compareTo(b.createdAt);
+        case SortOrder.alphabetical:
+          return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+      }
     });
 
     return filtered;
