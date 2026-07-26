@@ -982,21 +982,22 @@ class _NoteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('M/d/yyyy');
-    final isDrawing = note.type == NoteType.drawing;
-    final isVoice = note.type == NoteType.voice;
-    final themeColorIndex = context.watch<NotesProvider>().themeColorIndex;
-    final themeGrad = AppTheme.accentGradient(themeColorIndex);
     final cardHash = colorIndex;
-    final cardAccent = AppTheme.noteCardAccentColors[cardHash];
     final cardTextPrimary = AppTheme.noteCardText(context);
     final cardTextSecondary = AppTheme.noteCardSubText(context);
+    final typeStyle = _typeStyleFor(note.type);
+    final matchingFolders = note.folderId == null
+        ? const <Folder>[]
+        : Folder.defaultFolders
+            .where((f) => f.id == note.folderId && !f.isSystem)
+            .toList();
+    final folder = matchingFolders.isEmpty ? null : matchingFolders.first;
 
-    // Voice note card - same style as voice tab
-    if (isVoice) {
-      return _TapScale(
-        onTap: onTap,
-        child: Container(
+    return _TapScale(
+      onTap: onTap,
+      child: Container(
         margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: AppTheme.noteCardBg(context, cardHash),
           borderRadius: BorderRadius.circular(16),
@@ -1008,830 +1009,77 @@ class _NoteCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            // Waveform thumbnail
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: BorderRadius.circular(14),
               child: Container(
-                height: 50,
-                width: double.infinity,
-                color: cardAccent,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    _buildWaveformBars(),
-                    const Positioned(
-                      bottom: 6,
-                      right: 10,
-                      child: Icon(Icons.mic, color: Colors.white54, size: 14),
-                    ),
-                  ],
-                ),
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(gradient: typeStyle.gradient),
+                child: _buildThumbnail(typeStyle),
               ),
             ),
-            // Play button row
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Row(
-                children: [
-                  // Play button
-                  GestureDetector(
-                    onTap: isLoadingAudio ? null : onPlayPause,
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: cardAccent,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: isLoadingAudio
-                          ? const Padding(
-                              padding: EdgeInsets.all(8),
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2.5,
-                              ),
-                            )
-                          : Icon(
-                              isPlaying ? Icons.pause : Icons.play_arrow,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // Note info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          note.title,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: cardTextPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.access_time,
-                              size: 14,
-                              color: cardTextSecondary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              dateFormat.format(note.createdAt),
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: cardTextSecondary,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Icon(
-                              Icons.mic,
-                              size: 14,
-                              color: cardTextSecondary,
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                'Voice recording',
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: cardTextSecondary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Drag handle + menu
-                  Row(
-                    children: [
-                      Icon(Icons.drag_indicator, color: cardTextSecondary, size: 20),
-                      IconButton(
-                        icon: Icon(Icons.more_vert, color: cardTextSecondary),
-                        onPressed: onMenuTap,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        ),
-      );
-    }
-
-    // Document note card
-    if (note.type == NoteType.document) {
-      return _TapScale(
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: AppTheme.noteCardBg(context, cardHash),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // PDF thumbnail
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Container(
-                  height: 50,
-                  width: double.infinity,
-                  color: AppTheme.isDarkMode(context)
-                      ? cardAccent.withOpacity(0.7)
-                      : cardAccent,
-                  child: const Center(
-                    child: Icon(Icons.picture_as_pdf, color: Colors.white, size: 26),
-                  ),
-                ),
-              ),
-              // Info row
-              Padding(
-                padding: const EdgeInsets.all(10),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: cardAccent,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.picture_as_pdf,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            note.title,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: cardTextPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(Icons.access_time,
-                                  size: 14, color: cardTextSecondary),
-                              const SizedBox(width: 4),
-                              Text(
-                                dateFormat.format(note.createdAt),
-                                style: TextStyle(
-                                    fontSize: 13, color: cardTextSecondary),
-                              ),
-                              const SizedBox(width: 12),
-                              Icon(Icons.description,
-                                  size: 14, color: cardTextSecondary),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  note.content.isNotEmpty
-                                      ? note.content
-                                      : 'Scanned document',
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                      fontSize: 13, color: cardTextSecondary),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Icon(Icons.drag_indicator, color: cardTextSecondary, size: 20),
-                        IconButton(
-                          icon: Icon(Icons.more_vert, color: cardTextSecondary),
-                          onPressed: onMenuTap,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Photo note card - shows image thumbnail
-    if (note.type == NoteType.photo && note.imagePath != null) {
-      return _TapScale(
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: AppTheme.getCardColor(context),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image thumbnail
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Stack(
-                  children: [
-                    SizedBox(
-                      height: 100,
-                      width: double.infinity,
-                      child: ImageHelper.imageExists(note.imagePath)
-                          ? ImageHelper.buildImage(
-                              note.imagePath,
-                              fit: BoxFit.cover,
-                              height: 100,
-                            )
-                          : Container(
-                              color: AppTheme.getDividerColor(context),
-                              child: Icon(
-                                Icons.broken_image,
-                                size: 50,
-                                color: cardTextSecondary,
-                              ),
-                            ),
-                    ),
-                    // Photo badge
-                    Positioned(
-                      top: 12,
-                      left: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFEC4899), Color(0xFFF43F5E)],
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.photo_camera,
-                              size: 14,
-                              color: Colors.white,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'Photo',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    // OCR badge
-                    if (note.ocrText != null)
-                      Positioned(
-                        bottom: 10,
-                        left: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.55),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.text_fields,
-                                  size: 12, color: Colors.white),
-                              SizedBox(width: 4),
-                              Text(
-                                'OCR',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    // Menu button
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: IconButton(
-                          onPressed: onMenuTap,
-                          icon: const Icon(
-                            Icons.more_vert,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          padding: const EdgeInsets.all(4),
-                          constraints: const BoxConstraints(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Details section
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            note.title,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: cardTextPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Icon(Icons.calendar_today, size: 14, color: cardTextSecondary),
-                              const SizedBox(width: 4),
-                              Text(dateFormat.format(note.createdAt),
-                                  style: TextStyle(fontSize: 13, color: cardTextSecondary)),
-                              if (note.isPinned) ...[
-                                const SizedBox(width: 12),
-                                Icon(Icons.push_pin, size: 14, color: cardTextSecondary),
-                              ],
-                              if (note.isFavorite) ...[
-                                const SizedBox(width: 8),
-                                Icon(Icons.star, size: 14, color: Colors.amber.shade600),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.drag_indicator, color: cardTextSecondary, size: 20),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return _TapScale(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: isDrawing
-              ? AppTheme.getCardColor(context)
-              : AppTheme.noteCardBg(context, cardHash),
-
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: AppTheme.getDividerColor(context),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top section with menu
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 8, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Status icons and type indicator
-                  Row(
-                    children: [
-                      if (isDrawing)
-                        GestureDetector(
-                          onTap: onDrawingEdit,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF8B5CF6), Color(0xFFA855F7)],
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(
-                                  Icons.brush,
-                                  size: 14,
-                                  color: Colors.white,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Drawing',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                SizedBox(width: 4),
-                                Icon(
-                                  Icons.edit,
-                                  size: 12,
-                                  color: Colors.white70,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      if (note.type == NoteType.voice) ...[
-                        // Play/Pause button for voice notes
-                        if (onPlayPause != null)
-                          GestureDetector(
-                            onTap: isLoadingAudio ? null : onPlayPause,
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: isPlaying
-                                      ? [AppTheme.primaryMagenta, AppTheme.primaryPurple]
-                                      : [const Color(0xFF22C55E), const Color(0xFF10B981)],
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: isLoadingAudio
-                                  ? const Padding(
-                                      padding: EdgeInsets.all(8),
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2.5,
-                                      ),
-                                    )
-                                  : Icon(
-                                      isPlaying ? Icons.pause : Icons.play_arrow,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                            ),
-                          ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF06B6D4), Color(0xFF3B82F6)],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(
-                                Icons.mic,
-                                size: 14,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Voice',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      // Text note badge
-                      if (note.type == NoteType.text)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(
-                                Icons.description,
-                                size: 14,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Text',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      // Checklist note badge
-                      if (note.type == NoteType.checklist)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFFBBF24), Color(0xFFF59E0B)],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(
-                                Icons.checklist,
-                                size: 14,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Checklist',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (note.isPinned)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Icon(
-                            Icons.push_pin,
-                            size: 16,
-                            color: cardTextSecondary,
-                          ),
-                        ),
-                      if (note.isFavorite)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Icon(
-                            Icons.star,
-                            size: 16,
-                            color: Colors.amber.shade600,
-                          ),
-                        ),
-                      if (note.isLocked)
-                        Icon(
-                          Icons.lock,
-                          size: 16,
-                          color: cardTextSecondary,
-                        ),
-                      if (note.reminderDateTime != null) ...[
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.notifications_active,
-                          size: 16,
-                          color: Colors.orange.shade400,
-                        ),
-                      ],
-                    ],
-                  ),
-                  // Drag handle and Menu button
-                  Row(
-                    children: [
-                      // Drag handle
-                      Icon(
-                          Icons.drag_indicator,
-                          color: cardTextSecondary,
-                          size: 20,
-                        ),
-                      const SizedBox(width: 4),
-                      // Menu button
-                      IconButton(
-                        onPressed: onMenuTap,
-                        icon: Icon(
-                          Icons.more_vert,
-                          color: cardTextSecondary,
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Drawing thumbnail
-            if (isDrawing && note.imagePath != null) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    height: 65,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: _buildDrawingThumbnail(note.imagePath!),
-                  ),
-                ),
-              ),
-            ],
-
-            // Text preview
-            if (note.type == NoteType.text && note.content.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
-                child: Text(
-                  note.content,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                    height: 1.3,
-                  ),
-                ),
-              ),
-            ],
-
-            // Checklist preview
-            if (note.type == NoteType.checklist &&
-                (note.checklistItems?.isNotEmpty ?? false)) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: note.checklistItems!.take(2).map((item) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: Row(
-                        children: [
-                          Icon(
-                            item.isChecked
-                                ? Icons.check_box
-                                : Icons.check_box_outline_blank,
-                            size: 13,
-                            color: item.isChecked
-                                ? Colors.green.shade600
-                                : Colors.grey.shade500,
-                          ),
-                          const SizedBox(width: 5),
-                          Expanded(
-                            child: Text(
-                              item.text,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                                decoration: item.isChecked
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-
-            // Content section
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+            const SizedBox(width: 12),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title
                   Text(
                     note.title.isNotEmpty ? note.title : 'Untitled Note',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                       color: cardTextPrimary,
                     ),
                   ),
-
-                  // Tags
-                  if (note.tags.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: note.tags.take(3).map((tag) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryPurple.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            tag,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.primaryPurple,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-
-                  // Bottom row with type indicator and date
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  const SizedBox(height: 4),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
-                      // Type indicator
-                      Row(
-                        children: [
-                          Icon(
-                            isDrawing ? Icons.brush : Icons.language,
-                            size: 14,
-                            color: Colors.grey.shade600,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            isDrawing ? 'Sketch' : 'EN',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      // Date
                       Text(
                         dateFormat.format(note.createdAt),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
+                        style: TextStyle(fontSize: 13, color: cardTextSecondary),
                       ),
+                      if (folder != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: cardTextSecondary.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            folder.name,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: cardTextSecondary,
+                            ),
+                          ),
+                        ),
+                      if (note.isPinned)
+                        Icon(Icons.push_pin, size: 14, color: cardTextSecondary),
+                      if (note.isFavorite)
+                        Icon(Icons.star, size: 14, color: Colors.amber.shade600),
+                      if (note.isLocked)
+                        Icon(Icons.lock, size: 14, color: cardTextSecondary),
+                      if (note.reminderDateTime != null)
+                        Icon(Icons.notifications_active, size: 14, color: Colors.orange.shade400),
                     ],
                   ),
                 ],
               ),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              icon: Icon(Icons.more_vert, color: cardTextSecondary),
+              onPressed: onMenuTap,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             ),
           ],
         ),
@@ -1839,61 +1087,139 @@ class _NoteCard extends StatelessWidget {
     );
   }
 
+  _NoteTypeStyle _typeStyleFor(NoteType type) {
+    switch (type) {
+      case NoteType.voice:
+        return const _NoteTypeStyle(
+          icon: Icons.mic,
+          gradient: LinearGradient(colors: [Color(0xFF06B6D4), Color(0xFF3B82F6)]),
+        );
+      case NoteType.photo:
+        return const _NoteTypeStyle(
+          icon: Icons.photo_camera,
+          gradient: LinearGradient(colors: [Color(0xFFEC4899), Color(0xFFF43F5E)]),
+        );
+      case NoteType.drawing:
+        return const _NoteTypeStyle(
+          icon: Icons.brush,
+          gradient: LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFFA855F7)]),
+        );
+      case NoteType.checklist:
+        return const _NoteTypeStyle(
+          icon: Icons.checklist,
+          gradient: LinearGradient(colors: [Color(0xFFFBBF24), Color(0xFFF59E0B)]),
+        );
+      case NoteType.document:
+        return const _NoteTypeStyle(
+          icon: Icons.description,
+          gradient: LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)]),
+        );
+      case NoteType.text:
+        return const _NoteTypeStyle(
+          icon: Icons.text_fields,
+          gradient: LinearGradient(colors: [AppTheme.primaryPurple, AppTheme.primaryMagenta]),
+        );
+    }
+  }
+
   static const List<double> _waveHeights = [
-    18.0, 30.0, 22.0, 42.0, 28.0, 48.0, 20.0, 38.0, 24.0, 32.0, 44.0, 28.0, 18.0, 36.0, 24.0
+    10.0, 18.0, 13.0, 22.0, 16.0, 24.0, 12.0,
   ];
 
-  Widget _buildWaveformBars() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: _waveHeights.map((h) {
-        return Container(
-          width: 4,
-          height: h,
-          margin: const EdgeInsets.symmetric(horizontal: 2),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.85),
-            borderRadius: BorderRadius.circular(2),
+  Widget _buildThumbnail(_NoteTypeStyle typeStyle) {
+    switch (note.type) {
+      case NoteType.photo:
+        if (ImageHelper.imageExists(note.imagePath)) {
+          return ImageHelper.buildImage(note.imagePath, fit: BoxFit.cover, width: 56, height: 56);
+        }
+        return const Icon(Icons.broken_image, color: Colors.white, size: 24);
+
+      case NoteType.drawing:
+        if (ImageHelper.imageExists(note.imagePath)) {
+          return ImageHelper.buildImage(note.imagePath, fit: BoxFit.cover, width: 56, height: 56);
+        }
+        return Icon(typeStyle.icon, color: Colors.white, size: 24);
+
+      case NoteType.document:
+        if (ImageHelper.imageExists(note.imagePath)) {
+          return ImageHelper.buildImage(note.imagePath, fit: BoxFit.cover, width: 56, height: 56);
+        }
+        return const Icon(Icons.picture_as_pdf, color: Colors.white, size: 24);
+
+      case NoteType.voice:
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: _waveHeights.map((h) {
+            return Container(
+              width: 3,
+              height: h,
+              margin: const EdgeInsets.symmetric(horizontal: 1.5),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.85),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            );
+          }).toList(),
+        );
+
+      case NoteType.checklist:
+        final items = note.checklistItems ?? [];
+        if (items.isEmpty) {
+          return Icon(typeStyle.icon, color: Colors.white, size: 24);
+        }
+        return Padding(
+          padding: const EdgeInsets.all(6),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: items.take(3).map((item) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 1.5),
+                child: Row(
+                  children: [
+                    Icon(
+                      item.isChecked ? Icons.check_box : Icons.check_box_outline_blank,
+                      size: 9,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: Text(
+                        item.text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 8, color: Colors.white, height: 1),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
           ),
         );
-      }).toList(),
-    );
-  }
 
-  Widget _buildDrawingThumbnail(String imagePath) {
-    if (ImageHelper.imageExists(imagePath)) {
-      return ImageHelper.buildImage(
-        imagePath,
-        fit: BoxFit.cover,
-        placeholder: _buildPlaceholder(),
-      );
+      case NoteType.text:
+        if (note.content.trim().isEmpty) {
+          return Icon(typeStyle.icon, color: Colors.white, size: 24);
+        }
+        return Padding(
+          padding: const EdgeInsets.all(6),
+          child: Text(
+            note.content,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 8, color: Colors.white, height: 1.2),
+          ),
+        );
     }
-    return _buildPlaceholder();
   }
+}
 
-  Widget _buildPlaceholder() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.brush,
-            size: 40,
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Drawing',
-            style: TextStyle(
-              color: Colors.grey.shade500,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+class _NoteTypeStyle {
+  final IconData icon;
+  final Gradient gradient;
+  const _NoteTypeStyle({required this.icon, required this.gradient});
 }
 
 class _EmptyState extends StatelessWidget {
