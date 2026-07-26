@@ -38,10 +38,12 @@ Future<void> copyFile(String sourcePath, String destPath) async {
 }
 
 /// Build an image widget from a file path
-Widget buildFileImage(String path, {BoxFit fit = BoxFit.cover}) {
+Widget buildFileImage(String path, {BoxFit fit = BoxFit.cover, double? width, double? height}) {
   return Image.file(
     File(path),
     fit: fit,
+    width: width,
+    height: height,
     errorBuilder: (context, error, stackTrace) {
       return const SizedBox.shrink();
     },

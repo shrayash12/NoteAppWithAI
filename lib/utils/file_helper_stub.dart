@@ -25,7 +25,7 @@ Future<void> copyFile(String sourcePath, String destPath) async {}
 
 /// Build an image widget from a file path
 /// On web, returns a placeholder since local files aren't accessible
-Widget buildFileImage(String path, {BoxFit fit = BoxFit.cover}) {
+Widget buildFileImage(String path, {BoxFit fit = BoxFit.cover, double? width, double? height}) {
   return const SizedBox.shrink();
 }
 

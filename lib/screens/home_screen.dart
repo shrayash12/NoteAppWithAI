@@ -14,6 +14,7 @@ import '../widgets/filter_bottom_sheet.dart';
 import 'text_note_screen.dart';
 import 'drawing_screen.dart';
 import '../widgets/photo_preview_modal.dart';
+import '../widgets/fullscreen_image_viewer.dart';
 import '../widgets/animated_notification.dart';
 import '../widgets/shimmer_widgets.dart';
 import '../widgets/document_note_modal.dart';
@@ -831,7 +832,10 @@ class _DrawingPreviewDialogState extends State<_DrawingPreviewDialog> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: ImageHelper.imageExists(note.imagePath)
-                    ? ImageHelper.buildImage(note.imagePath, fit: BoxFit.contain)
+                    ? GestureDetector(
+                        onTap: () => showFullScreenImage(context, note.imagePath),
+                        child: ImageHelper.buildImage(note.imagePath, fit: BoxFit.contain),
+                      )
                     : Center(child: Icon(Icons.broken_image, size: 60, color: AppTheme.getIconColor(context))),
               ),
             ),

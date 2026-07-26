@@ -15,6 +15,7 @@ import 'animated_notification.dart';
 import '../utils/storage_helper.dart';
 import '../utils/image_helper.dart';
 import '../utils/file_helper.dart' as file_helper;
+import 'fullscreen_image_viewer.dart';
 
 void showPhotoPreviewModal(BuildContext context, Note note) {
   showDialog(
@@ -462,9 +463,8 @@ class _PhotoPreviewModalState extends State<PhotoPreviewModal> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: ImageHelper.imageExists(_currentNote.imagePath)
-                      ? InteractiveViewer(
-                          minScale: 0.5,
-                          maxScale: 4.0,
+                      ? GestureDetector(
+                          onTap: () => showFullScreenImage(context, _currentNote.imagePath),
                           child: ImageHelper.buildImage(
                             _currentNote.imagePath,
                             fit: BoxFit.contain,

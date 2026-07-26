@@ -58,7 +58,7 @@ class ImageHelper {
 
     // Otherwise, it's a local file path (native only)
     if (file_helper.hasFileSystemAccess && file_helper.fileExists(imagePath)) {
-      return file_helper.buildFileImage(imagePath, fit: fit);
+      return file_helper.buildFileImage(imagePath, fit: fit, width: width, height: height);
     }
 
     return defaultPlaceholder;
