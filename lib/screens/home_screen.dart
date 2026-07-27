@@ -308,10 +308,12 @@ class _HomeScreenState extends State<HomeScreen> {
       case 4: notes = notesProvider.lockedNotesList; break;
       default: notes = notesProvider.allNotes;
     }
-    if (_selectedFilterIndex != 0) {
+    if (_selectedFilterIndex != 0 || notesProvider.filter.sortOrder != SortOrder.newest) {
+      // Any explicit sort choice (Oldest/A-Z) overrides manual drag order,
+      // since the two can't coexist meaningfully.
       notes = notesProvider.applyFilters(notes);
     } else {
-      // For "All Notes", preserve drag-and-drop order but still float pinned notes to top
+      // Default "All Notes" view: preserve drag-and-drop order, pinned notes float to top
       notes = notes.toList();
       notes.sort((a, b) {
         if (a.isPinned && !b.isPinned) return -1;
