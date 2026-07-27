@@ -254,15 +254,18 @@ class _DocumentNoteModalState extends State<DocumentNoteModal> {
                       ),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.document_scanner,
-                            size: 16, color: Colors.white),
-                        SizedBox(width: 4),
+                        Icon(
+                          _currentNote.tags.isNotEmpty ? Icons.receipt_long : Icons.document_scanner,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 4),
                         Text(
-                          'Document',
-                          style: TextStyle(
+                          _currentNote.tags.isNotEmpty ? 'SmartScan' : 'Document',
+                          style: const TextStyle(
                             fontSize: 13,
                             color: Colors.white,
                             fontWeight: FontWeight.w600,

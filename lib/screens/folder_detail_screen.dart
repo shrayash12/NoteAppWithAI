@@ -388,14 +388,18 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                     color: const Color(0xFF3B82F6).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.description_outlined, size: 14, color: Color(0xFF3B82F6)),
-                      SizedBox(width: 4),
+                      Icon(
+                        note.tags.isNotEmpty ? Icons.receipt_long : Icons.description_outlined,
+                        size: 14,
+                        color: const Color(0xFF3B82F6),
+                      ),
+                      const SizedBox(width: 4),
                       Text(
-                        'Document',
-                        style: TextStyle(
+                        note.tags.isNotEmpty ? 'SmartScan' : 'Document',
+                        style: const TextStyle(
                           fontSize: 11,
                           color: Color(0xFF3B82F6),
                           fontWeight: FontWeight.w600,
