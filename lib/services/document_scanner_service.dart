@@ -19,14 +19,12 @@ class DocumentScannerService {
 
       final enhanced = img.adjustColor(
         original,
-        contrast: 1.4,
-        brightness: 1.05,
-        saturation: 0.0,
+        contrast: 1.1,
       );
 
       final tempDir = await getTemporaryDirectory();
       final outPath = '${tempDir.path}/enhanced_${const Uuid().v4()}.jpg';
-      await File(outPath).writeAsBytes(img.encodeJpg(enhanced, quality: 90));
+      await File(outPath).writeAsBytes(img.encodeJpg(enhanced, quality: 95));
       return outPath;
     } catch (e) {
       debugPrint('DocumentScannerService: enhanceImage error: $e');

@@ -81,6 +81,7 @@ class Note {
   final bool isLocked;
   final String? voicePath;
   final String? imagePath;
+  final String? originalImagePath;
   final String? pdfPath;
   final List<ChecklistItem>? checklistItems;
   final int colorIndex;
@@ -101,6 +102,7 @@ class Note {
     this.isLocked = false,
     this.voicePath,
     this.imagePath,
+    this.originalImagePath,
     this.pdfPath,
     this.checklistItems,
     this.colorIndex = -1, // -1 means default pink
@@ -129,6 +131,7 @@ class Note {
     bool? isLocked,
     String? voicePath,
     String? imagePath,
+    String? originalImagePath,
     String? pdfPath,
     List<ChecklistItem>? checklistItems,
     int? colorIndex,
@@ -151,6 +154,7 @@ class Note {
       isLocked: isLocked ?? this.isLocked,
       voicePath: voicePath ?? this.voicePath,
       imagePath: imagePath ?? this.imagePath,
+      originalImagePath: originalImagePath ?? this.originalImagePath,
       pdfPath: pdfPath ?? this.pdfPath,
       checklistItems: checklistItems ?? this.checklistItems,
       colorIndex: colorIndex ?? this.colorIndex,
@@ -174,6 +178,7 @@ class Note {
       'isLocked': isLocked,
       'voicePath': voicePath,
       'imagePath': imagePath,
+      'originalImagePath': originalImagePath,
       'pdfPath': pdfPath,
       'checklistItems': checklistItems?.map((e) => e.toJson()).toList(),
       'colorIndex': colorIndex,
@@ -197,6 +202,7 @@ class Note {
       isLocked: json['isLocked'] ?? false,
       voicePath: json['voicePath'],
       imagePath: json['imagePath'],
+      originalImagePath: json['originalImagePath'],
       pdfPath: json['pdfPath'],
       checklistItems: json['checklistItems'] != null
           ? (json['checklistItems'] as List)
@@ -226,6 +232,7 @@ class Note {
       'isLocked': isLocked,
       'voicePath': voicePath,
       'imagePath': imagePath,
+      'originalImagePath': originalImagePath,
       'pdfPath': pdfPath,
       'checklistItems': checklistItems?.map((e) => e.toJson()).toList(),
       'colorIndex': colorIndex,
@@ -251,6 +258,7 @@ class Note {
       isLocked: data['isLocked'] ?? false,
       voicePath: data['voicePath'],
       imagePath: data['imagePath'],
+      originalImagePath: data['originalImagePath'],
       pdfPath: data['pdfPath'],
       checklistItems: data['checklistItems'] != null
           ? (data['checklistItems'] as List)

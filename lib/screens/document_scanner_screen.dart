@@ -44,6 +44,8 @@ Note _buildNoteFromScannerProvider(DocumentScannerProvider provider, {String? fo
   final now = DateTime.now();
   final pageCount = provider.displayPaths.length;
   final previewImagePath = provider.displayPaths.isNotEmpty ? provider.displayPaths.first : null;
+  final originalImagePath =
+      provider.scannedImagePaths.isNotEmpty ? provider.scannedImagePaths.first : null;
 
   return Note(
     id: const Uuid().v4(),
@@ -52,6 +54,7 @@ Note _buildNoteFromScannerProvider(DocumentScannerProvider provider, {String? fo
     type: NoteType.document,
     pdfPath: provider.uploadedPdfUrl,
     imagePath: previewImagePath,
+    originalImagePath: originalImagePath,
     folderId: folderId,
     ocrText: provider.ocrText,
     tags: provider.classification?.tags ?? const [],

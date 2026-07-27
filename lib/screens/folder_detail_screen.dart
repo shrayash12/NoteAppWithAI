@@ -7,6 +7,7 @@ import '../providers/notes_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_notification.dart';
 import '../widgets/photo_preview_modal.dart';
+import '../widgets/document_note_modal.dart';
 import 'text_note_screen.dart';
 import 'drawing_screen.dart';
 import '../utils/storage_helper.dart';
@@ -350,9 +351,106 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
         return _buildPhotoNoteCard(context, note, notesProvider, dateFormat, cardHash);
       case NoteType.drawing:
         return _buildDrawingNoteCard(context, note, notesProvider, dateFormat, cardHash);
+      case NoteType.document:
+        return _buildDocumentNoteCard(context, note, notesProvider, dateFormat, cardHash);
       default:
         return _buildTextNoteCard(context, note, notesProvider, dateFormat, cardHash);
     }
+  }
+
+  Widget _buildDocumentNoteCard(BuildContext context, Note note, NotesProvider notesProvider, DateFormat dateFormat, int cardHash) {
+    final cardTextPrimary = AppTheme.noteCardText(context);
+    final cardTextSecondary = AppTheme.noteCardSubText(context);
+    return GestureDetector(
+      onTap: () => showDocumentNoteModal(context, note),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.noteCardBg(context, cardHash),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.description_outlined, size: 14, color: Color(0xFF3B82F6)),
+                      SizedBox(width: 4),
+                      Text(
+                        'Document',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF3B82F6),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                if (note.isFavorite)
+                  Icon(Icons.star, size: 18, color: Colors.amber.shade600),
+                if (note.isPinned)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Icon(Icons.push_pin, size: 18, color: cardTextSecondary),
+                  ),
+                _buildPopupMenu(context, note, notesProvider),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              note.title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: cardTextPrimary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (note.content.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                note.content,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: cardTextSecondary,
+                  height: 1.4,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const SizedBox(height: 12),
+            Text(
+              dateFormat.format(note.createdAt),
+              style: TextStyle(
+                fontSize: 12,
+                color: cardTextSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildTextNoteCard(BuildContext context, Note note, NotesProvider notesProvider, DateFormat dateFormat, int cardHash) {

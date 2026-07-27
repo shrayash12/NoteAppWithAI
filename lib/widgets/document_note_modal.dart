@@ -11,7 +11,9 @@ import 'package:uuid/uuid.dart';
 import '../models/note.dart';
 import '../providers/notes_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/image_helper.dart';
 import 'animated_notification.dart';
+import 'fullscreen_image_viewer.dart';
 
 void showDocumentNoteModal(BuildContext context, Note note) {
   showDialog(
@@ -234,7 +236,8 @@ class _DocumentNoteModalState extends State<DocumentNoteModal> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Column(
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Header
@@ -335,8 +338,72 @@ class _DocumentNoteModalState extends State<DocumentNoteModal> {
             ),
             const SizedBox(height: 8),
 
+            // Scanned page preview (SmartScan / auto-saved documents without a PDF yet)
+            if (_currentNote.imagePath != null && ImageHelper.imageExists(_currentNote.imagePath)) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                child: Text(
+                  'Enhanced',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: GestureDetector(
+                  onTap: () => showFullScreenImage(context, _currentNote.imagePath),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ImageHelper.buildImage(
+                      _currentNote.imagePath,
+                      fit: BoxFit.cover,
+                      height: 220,
+                      width: double.infinity,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Original scanned image, before enhancement
+            if (_currentNote.originalImagePath != null &&
+                _currentNote.originalImagePath != _currentNote.imagePath &&
+                ImageHelper.imageExists(_currentNote.originalImagePath)) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                child: Text(
+                  'Original',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: GestureDetector(
+                  onTap: () => showFullScreenImage(context, _currentNote.originalImagePath),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ImageHelper.buildImage(
+                      _currentNote.originalImagePath,
+                      fit: BoxFit.cover,
+                      height: 220,
+                      width: double.infinity,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+
             // PDF card
-            _buildPdfCard(),
+            if (_currentNote.pdfPath != null) _buildPdfCard(),
 
             // Open PDF button
             if (_currentNote.pdfPath != null)
@@ -548,6 +615,7 @@ class _DocumentNoteModalState extends State<DocumentNoteModal> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
