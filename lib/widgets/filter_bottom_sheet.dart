@@ -207,6 +207,31 @@ class FilterBottomSheet extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
+              // Group by Date
+              Text(
+                'Display',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.getTextPrimaryColor(context),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _FilterChip(
+                    label: 'Group by Date',
+                    icon: Icons.calendar_today_outlined,
+                    color: AppTheme.primaryPurple,
+                    isSelected: notesProvider.groupByDate,
+                    onTap: () => notesProvider.toggleGroupByDate(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
               // Apply Button
               SizedBox(
                 width: double.infinity,

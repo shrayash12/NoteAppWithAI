@@ -60,6 +60,7 @@ class NotesProvider extends ChangeNotifier {
   bool _appLockEnabled = false;
   bool _biometricEnabled = true;
   bool _isGridView = false;
+  bool _groupByDate = false;
   bool _isLoading = true;
   bool _remindersRescheduled = false;
   String _searchQuery = '';
@@ -84,6 +85,7 @@ class NotesProvider extends ChangeNotifier {
   bool get appLockEnabled => _appLockEnabled;
   bool get biometricEnabled => _biometricEnabled;
   bool get isGridView => _isGridView;
+  bool get groupByDate => _groupByDate;
   bool get isLoading => _isLoading;
   String get searchQuery => _searchQuery;
   NoteFilter get filter => _filter;
@@ -301,6 +303,7 @@ class NotesProvider extends ChangeNotifier {
     _appLockEnabled = prefs.getBool('appLock') ?? false;
     _biometricEnabled = prefs.getBool('biometric') ?? true;
     _isGridView = prefs.getBool('gridView') ?? false;
+    _groupByDate = prefs.getBool('groupByDate') ?? false;
     final reminderHour = prefs.getInt('reminderHour') ?? 9;
     final reminderMinute = prefs.getInt('reminderMinute') ?? 0;
     _reminderTime = TimeOfDay(hour: reminderHour, minute: reminderMinute);
@@ -370,6 +373,13 @@ class NotesProvider extends ChangeNotifier {
     _isGridView = !_isGridView;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('gridView', _isGridView);
+    notifyListeners();
+  }
+
+  Future<void> toggleGroupByDate() async {
+    _groupByDate = !_groupByDate;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('groupByDate', _groupByDate);
     notifyListeners();
   }
 
