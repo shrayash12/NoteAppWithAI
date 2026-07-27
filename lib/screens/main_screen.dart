@@ -320,7 +320,7 @@ class _AIFloatingButtonState extends State<_AIFloatingButton>
             ),
             const SizedBox(height: 10),
             _AIFeatureTile(
-              icon: Icons.document_scanner_outlined,
+              icon: Icons.receipt_long,
               label: 'SmartScan',
               description: 'Capture, understand, organize',
               usageLabel: '',

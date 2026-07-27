@@ -145,7 +145,7 @@ class _DocumentScannerEntryState extends State<_DocumentScannerEntry> {
   @override
   Widget build(BuildContext context) {
     if (!_initialized) {
-      return const _LoadingScreen();
+      return _LoadingScreen(isSmartScan: widget.autoSave);
     }
     return const DocumentScannerScreen();
   }
@@ -155,7 +155,8 @@ class _DocumentScannerEntryState extends State<_DocumentScannerEntry> {
 // Loading screen shown while scanning/enhancing
 // ---------------------------------------------------------------------------
 class _LoadingScreen extends StatelessWidget {
-  const _LoadingScreen();
+  final bool isSmartScan;
+  const _LoadingScreen({this.isSmartScan = false});
 
   @override
   Widget build(BuildContext context) {
@@ -190,8 +191,8 @@ class _LoadingScreen extends StatelessWidget {
                     ),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Icon(
-                    Icons.document_scanner,
+                  child: Icon(
+                    isSmartScan ? Icons.receipt_long : Icons.document_scanner,
                     color: Colors.white,
                     size: 36,
                   ),
