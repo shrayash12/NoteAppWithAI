@@ -327,7 +327,7 @@ class _AIFloatingButtonState extends State<_AIFloatingButton>
               gradient: gradient,
               onTap: () {
                 Navigator.pop(context);
-                launchDocumentScanner(context);
+                launchDocumentScanner(context, autoSave: true);
               },
             ),
           ],

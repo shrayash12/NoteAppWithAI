@@ -13,8 +13,13 @@ import '../providers/notes_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/document_note_modal.dart';
 
-/// Entry point — call this from main_screen.dart
-Future<void> launchDocumentScanner(BuildContext context) async {
+/// Entry point — call this from main_screen.dart.
+/// When [autoSave] is true (the SmartScan entry point), the note is saved
+/// automatically using the detected category/title/folder with no manual
+/// review step — straight to the results screen, per "Capture. Understand.
+/// Organize." When false (the plain "Scan Doc" entry), the existing manual
+/// review screen (title field, folder chips, Save button) is shown.
+Future<void> launchDocumentScanner(BuildContext context, {bool autoSave = false}) async {
   if (kIsWeb) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -28,9 +33,30 @@ Future<void> launchDocumentScanner(BuildContext context) async {
     MaterialPageRoute(
       builder: (_) => ChangeNotifierProvider(
         create: (_) => DocumentScannerProvider(),
-        child: const _DocumentScannerEntry(),
+        child: _DocumentScannerEntry(autoSave: autoSave),
       ),
     ),
+  );
+}
+
+/// Builds the Note to save from the current scanner provider state.
+Note _buildNoteFromScannerProvider(DocumentScannerProvider provider, {String? folderId}) {
+  final now = DateTime.now();
+  final pageCount = provider.displayPaths.length;
+  final previewImagePath = provider.displayPaths.isNotEmpty ? provider.displayPaths.first : null;
+
+  return Note(
+    id: const Uuid().v4(),
+    title: provider.title.isNotEmpty ? provider.title : 'Scanned Document',
+    content: 'Scanned document – $pageCount page(s)',
+    type: NoteType.document,
+    pdfPath: provider.uploadedPdfUrl,
+    imagePath: previewImagePath,
+    folderId: folderId,
+    ocrText: provider.ocrText,
+    tags: provider.classification?.tags ?? const [],
+    createdAt: now,
+    updatedAt: now,
   );
 }
 
@@ -38,7 +64,8 @@ Future<void> launchDocumentScanner(BuildContext context) async {
 // Entry widget — runs scan + enhance in initState
 // ---------------------------------------------------------------------------
 class _DocumentScannerEntry extends StatefulWidget {
-  const _DocumentScannerEntry();
+  final bool autoSave;
+  const _DocumentScannerEntry({this.autoSave = false});
 
   @override
   State<_DocumentScannerEntry> createState() => _DocumentScannerEntryState();
@@ -79,8 +106,36 @@ class _DocumentScannerEntryState extends State<_DocumentScannerEntry> {
       await provider.analyzeDocument();
     }
 
+    if (widget.autoSave && !kIsWeb) {
+      await _autoSaveAndShowResult(provider);
+      return;
+    }
+
     if (mounted) {
       setState(() => _initialized = true);
+    }
+  }
+
+  Future<void> _autoSaveAndShowResult(DocumentScannerProvider provider) async {
+    final notesProvider = context.read<NotesProvider>();
+    final folderId = provider.classification?.category.folderId;
+    final note = _buildNoteFromScannerProvider(provider, folderId: folderId);
+
+    try {
+      await notesProvider.addNote(note);
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => SmartScanResultScreen(note: note)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save note: $e')),
+        );
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -244,26 +299,7 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
   Future<void> _saveNote() async {
     final provider = context.read<DocumentScannerProvider>();
     final notesProvider = context.read<NotesProvider>();
-
-    final now = DateTime.now();
-    final pageCount = provider.displayPaths.length;
-    final classification = provider.classification;
-    final previewImagePath =
-        provider.displayPaths.isNotEmpty ? provider.displayPaths.first : null;
-
-    final note = Note(
-      id: const Uuid().v4(),
-      title: provider.title.isNotEmpty ? provider.title : 'Scanned Document',
-      content: 'Scanned document – $pageCount page(s)',
-      type: NoteType.document,
-      pdfPath: provider.uploadedPdfUrl,
-      imagePath: previewImagePath,
-      folderId: _selectedFolderId,
-      ocrText: provider.ocrText,
-      tags: classification?.tags ?? const [],
-      createdAt: now,
-      updatedAt: now,
-    );
+    final note = _buildNoteFromScannerProvider(provider, folderId: _selectedFolderId);
 
     try {
       await notesProvider.addNote(note);
