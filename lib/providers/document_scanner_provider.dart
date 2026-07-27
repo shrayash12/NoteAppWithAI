@@ -91,16 +91,19 @@ class DocumentScannerProvider extends ChangeNotifier {
     }
   }
 
-  /// Enhance all scanned images in parallel using compute().
+  /// Enhance all scanned images in parallel.
+  ///
+  /// Runs directly on the main isolate rather than via compute() — plugins
+  /// that use platform channels (e.g. path_provider here, ML Kit in
+  /// analyzeDocument below) throw `BackgroundIsolateBinaryMessenger` errors
+  /// when invoked from a background isolate spawned by compute().
   Future<void> enhance() async {
     if (_scannedImagePaths.isEmpty) return;
     _state = DocumentScannerState.enhancing;
     notifyListeners();
 
     try {
-      final futures = _scannedImagePaths
-          .map((p) => compute(enhanceImageIsolate, p))
-          .toList();
+      final futures = _scannedImagePaths.map((p) => _service.enhanceImage(p)).toList();
       _enhancedImagePaths = await Future.wait(futures);
       _state = DocumentScannerState.idle;
       notifyListeners();
@@ -122,7 +125,7 @@ class DocumentScannerProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final ocrText = await compute(extractOcrFromPaths, paths);
+      final ocrText = await OcrService().extractTextFromImagePaths(paths);
       if (ocrText != null && ocrText.isNotEmpty) {
         _ocrText = ocrText;
         _classification = const DocumentClassifierService().classify(ocrText);

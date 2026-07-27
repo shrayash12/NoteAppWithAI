@@ -1,5 +1,5 @@
 import 'package:cunning_document_scanner/cunning_document_scanner.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, compute;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -201,7 +201,7 @@ class _PhotoPreviewModalState extends State<PhotoPreviewModal> {
     if (imagePath == null || kIsWeb) return;
     setState(() => _isExtractingOcr = true);
     try {
-      final text = await compute(extractOcrFromPath, imagePath);
+      final text = await extractOcrFromPath(imagePath);
       final notesProvider = Provider.of<NotesProvider>(context, listen: false);
       await notesProvider.updateNoteOcrText(_currentNote.id, text);
       setState(() {
