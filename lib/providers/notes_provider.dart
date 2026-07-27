@@ -96,7 +96,8 @@ class NotesProvider extends ChangeNotifier {
     return _notes.where((note) {
       return note.title.toLowerCase().contains(lowerQuery) ||
           note.content.toLowerCase().contains(lowerQuery) ||
-          (note.ocrText?.toLowerCase().contains(lowerQuery) ?? false);
+          (note.ocrText?.toLowerCase().contains(lowerQuery) ?? false) ||
+          note.tags.any((tag) => tag.toLowerCase().contains(lowerQuery));
     }).toList();
   }
 

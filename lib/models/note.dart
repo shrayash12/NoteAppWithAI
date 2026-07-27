@@ -358,5 +358,42 @@ class Folder {
       color: const Color(0xFF6B7280),
       isSystem: true,
     ),
+    // SmartScan auto-organize folders
+    Folder(
+      id: 'receipts',
+      name: 'Receipts',
+      icon: Icons.receipt_long,
+      color: const Color(0xFF22C55E),
+    ),
+    Folder(
+      id: 'bills',
+      name: 'Bills',
+      icon: Icons.description_outlined,
+      color: const Color(0xFF3B82F6),
+    ),
+    Folder(
+      id: 'bank_statements',
+      name: 'Bank Statements',
+      icon: Icons.account_balance_outlined,
+      color: const Color(0xFF6366F1),
+    ),
+    Folder(
+      id: 'medical',
+      name: 'Medical',
+      icon: Icons.medical_information_outlined,
+      color: const Color(0xFFEF4444),
+    ),
+    Folder(
+      id: 'identity',
+      name: 'Identity',
+      icon: Icons.badge_outlined,
+      color: const Color(0xFF8B5CF6),
+    ),
+    Folder(
+      id: 'documents',
+      name: 'Documents',
+      icon: Icons.insert_drive_file_outlined,
+      color: const Color(0xFF6B7280),
+    ),
   ];
 }

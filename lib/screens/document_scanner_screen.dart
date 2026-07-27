@@ -1,16 +1,17 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb, compute;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
+import '../models/document_category.dart';
 import '../models/note.dart';
 import '../providers/document_scanner_provider.dart';
 import '../providers/notes_provider.dart';
-import '../services/ocr_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/document_note_modal.dart';
 
 /// Entry point — call this from main_screen.dart
 Future<void> launchDocumentScanner(BuildContext context) async {
@@ -59,12 +60,23 @@ class _DocumentScannerEntryState extends State<_DocumentScannerEntry> {
 
     final scanned = await provider.scan();
     if (!scanned) {
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        if (provider.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(provider.errorMessage!)),
+          );
+        }
+        Navigator.pop(context);
+      }
       return;
     }
 
     if (provider.enhanceEnabled) {
       await provider.enhance();
+    }
+
+    if (!kIsWeb) {
+      await provider.analyzeDocument();
     }
 
     if (mounted) {
@@ -98,6 +110,9 @@ class _LoadingScreen extends StatelessWidget {
             break;
           case DocumentScannerState.enhancing:
             message = 'Enhancing image quality…';
+            break;
+          case DocumentScannerState.analyzing:
+            message = 'Reading text & detecting document type…';
             break;
           default:
             message = 'Please wait…';
@@ -160,6 +175,11 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
   final TextEditingController _titleController = TextEditingController();
 
   static const _folderOptions = [
+    ('receipts', 'Receipts'),
+    ('bills', 'Bills'),
+    ('bank_statements', 'Bank Statements'),
+    ('medical', 'Medical'),
+    ('identity', 'Identity'),
     ('work', 'Work'),
     ('personal', 'Personal'),
     ('ideas', 'Ideas'),
@@ -171,6 +191,10 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<DocumentScannerProvider>();
       _titleController.text = provider.title;
+      final category = provider.classification?.category;
+      if (category != null && category.id != DocumentCategory.miscellaneous.id) {
+        setState(() => _selectedFolderId = category.folderId);
+      }
     });
   }
 
@@ -221,18 +245,22 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
     final provider = context.read<DocumentScannerProvider>();
     final notesProvider = context.read<NotesProvider>();
 
-    // Capture image paths before Navigator.pop clears provider state
-    final imagePaths = List<String>.from(provider.displayPaths);
-
     final now = DateTime.now();
     final pageCount = provider.displayPaths.length;
+    final classification = provider.classification;
+    final previewImagePath =
+        provider.displayPaths.isNotEmpty ? provider.displayPaths.first : null;
+
     final note = Note(
       id: const Uuid().v4(),
       title: provider.title.isNotEmpty ? provider.title : 'Scanned Document',
       content: 'Scanned document – $pageCount page(s)',
       type: NoteType.document,
       pdfPath: provider.uploadedPdfUrl,
+      imagePath: previewImagePath,
       folderId: _selectedFolderId,
+      ocrText: provider.ocrText,
+      tags: classification?.tags ?? const [],
       createdAt: now,
       updatedAt: now,
     );
@@ -240,18 +268,14 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
     try {
       await notesProvider.addNote(note);
 
-      // Fire-and-forget OCR on native
-      if (!kIsWeb && imagePaths.isNotEmpty) {
-        compute(extractOcrFromPaths, imagePaths).then((ocrText) {
-          if (ocrText != null && ocrText.isNotEmpty) {
-            notesProvider.updateNoteOcrText(note.id, ocrText);
-          }
-        }).catchError((e) {
-          debugPrint('DocumentScanner OCR error: $e');
-        });
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SmartScanResultScreen(note: note),
+          ),
+        );
       }
-
-      if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -378,6 +402,35 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // SmartScan detected category badge
+                    if (provider.classification != null &&
+                        provider.classification!.category.id != DocumentCategory.miscellaneous.id) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: provider.classification!.category.color.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(provider.classification!.category.icon,
+                                size: 14, color: provider.classification!.category.color),
+                            const SizedBox(width: 6),
+                            Text(
+                              'SmartScan detected: ${provider.classification!.category.displayName}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: provider.classification!.category.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
                     // Title field
                     TextField(
                       controller: _titleController,
@@ -607,6 +660,181 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SmartScan results screen — shown after saving, matches the spec's
+// "Capture. Understand. Organize." success step.
+// ---------------------------------------------------------------------------
+class SmartScanResultScreen extends StatelessWidget {
+  final Note note;
+  const SmartScanResultScreen({super.key, required this.note});
+
+  @override
+  Widget build(BuildContext context) {
+    final matchingFolders = note.folderId == null
+        ? const <Folder>[]
+        : Folder.defaultFolders.where((f) => f.id == note.folderId).toList();
+    final folderName = matchingFolders.isEmpty ? null : matchingFolders.first.name;
+    final category = note.tags.isNotEmpty ? note.tags.first : 'Document';
+
+    return Scaffold(
+      backgroundColor: AppTheme.getBackgroundColor(context),
+      appBar: AppBar(
+        backgroundColor: AppTheme.getCardColor(context),
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: Text(
+          'SmartScan Complete',
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(context),
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle, color: Colors.green, size: 48),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: Text(
+                'Captured, understood & organized',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.getTextPrimaryColor(context),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            _InfoRow(icon: Icons.label_outline, label: 'Category', value: category),
+            if (folderName != null)
+              _InfoRow(icon: Icons.folder_outlined, label: 'Folder', value: folderName),
+            _InfoRow(icon: Icons.title, label: 'Title', value: note.title),
+
+            if (note.imagePath != null && File(note.imagePath!).existsSync()) ...[
+              const SizedBox(height: 16),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(
+                  File(note.imagePath!),
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ],
+
+            if (note.ocrText != null && note.ocrText!.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Text(
+                'Extracted Text',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.getTextPrimaryColor(context),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                constraints: const BoxConstraints(maxHeight: 160),
+                decoration: BoxDecoration(
+                  color: AppTheme.getSurfaceColor(context),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: SingleChildScrollView(
+                  child: Text(
+                    note.ocrText!,
+                    style: TextStyle(fontSize: 13, color: AppTheme.getTextSecondaryColor(context)),
+                  ),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 28),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => showDocumentNoteModal(context, note),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppTheme.primaryPurple),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                    child: const Text('Edit', style: TextStyle(color: AppTheme.primaryPurple)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryPurple,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                    child: const Text('Done', style: TextStyle(color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _InfoRow({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppTheme.getTextSecondaryColor(context)),
+          const SizedBox(width: 10),
+          Text(
+            '$label: ',
+            style: TextStyle(fontSize: 14, color: AppTheme.getTextSecondaryColor(context)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.getTextPrimaryColor(context),
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

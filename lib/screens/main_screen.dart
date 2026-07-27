@@ -318,6 +318,18 @@ class _AIFloatingButtonState extends State<_AIFloatingButton>
                 showAIActionSheet(context, AIActionType.translate);
               },
             ),
+            const SizedBox(height: 10),
+            _AIFeatureTile(
+              icon: Icons.document_scanner_outlined,
+              label: 'SmartScan',
+              description: 'Capture, understand, organize',
+              usageLabel: '',
+              gradient: gradient,
+              onTap: () {
+                Navigator.pop(context);
+                launchDocumentScanner(context);
+              },
+            ),
           ],
         ),
       ),
