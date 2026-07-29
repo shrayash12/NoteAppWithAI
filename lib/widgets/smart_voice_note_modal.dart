@@ -11,6 +11,7 @@ import '../services/voice_classifier_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/storage_helper.dart';
 import '../utils/file_helper.dart' as file_helper;
+import 'typewriter_text.dart';
 
 void showSmartVoiceNoteModal(BuildContext context) {
   showModalBottomSheet(
@@ -348,29 +349,32 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal>
                 ),
                 child: SingleChildScrollView(
                   reverse: true,
-                  child: Text(
-                    _transcript,
+                  child: TypewriterText(
+                    text: _transcript,
+                    charDuration: const Duration(milliseconds: 18),
+                    cursorColor: accentColor,
                     style: TextStyle(fontSize: 14, color: AppTheme.getTextSecondaryColor(context)),
                   ),
                 ),
               ),
             const SizedBox(height: 24),
             SizedBox(
-              width: 200,
-              height: 200,
+              width: 260,
+              height: 260,
               child: Stack(
                 alignment: Alignment.center,
+                clipBehavior: Clip.none,
                 children: [
                   if (_state == _RecState.recording)
-                    ...List.generate(3, (i) {
+                    ...List.generate(4, (i) {
                       return AnimatedBuilder(
                         animation: _pulseController,
                         builder: (context, child) {
-                          final t = (_pulseController.value + i / 3) % 1.0;
+                          final t = (_pulseController.value + i / 4) % 1.0;
                           return Opacity(
-                            opacity: (1.0 - t).clamp(0.0, 1.0),
+                            opacity: (1.0 - t) * (1.0 - t),
                             child: Transform.scale(
-                              scale: 1.0 + t * 1.6,
+                              scale: 1.0 + t * 2.0,
                               child: Container(
                                 width: 84,
                                 height: 84,
@@ -507,8 +511,9 @@ class SmartVoiceNoteResultScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: SingleChildScrollView(
-                  child: Text(
-                    note.ocrText!,
+                  child: TypewriterText(
+                    text: note.ocrText!,
+                    charDuration: const Duration(milliseconds: 12),
                     style: TextStyle(fontSize: 13, color: AppTheme.getTextSecondaryColor(context)),
                   ),
                 ),
