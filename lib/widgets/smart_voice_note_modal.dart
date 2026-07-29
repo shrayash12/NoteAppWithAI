@@ -48,7 +48,8 @@ class SmartVoiceNoteModal extends StatefulWidget {
   State<SmartVoiceNoteModal> createState() => _SmartVoiceNoteModalState();
 }
 
-class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal> {
+class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal>
+    with SingleTickerProviderStateMixin {
   final AudioRecorder _recorder = AudioRecorder();
   final stt.SpeechToText _speech = stt.SpeechToText();
 
@@ -60,6 +61,11 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal> {
   String? _errorMessage;
   String _selectedLanguageCode = 'en';
 
+  late final AnimationController _pulseController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat();
+
   String get _selectedLocaleId => _kVoiceNoteLanguages
       .firstWhere((l) => l['code'] == _selectedLanguageCode)['locale']!;
 
@@ -68,6 +74,7 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal> {
     _timer?.cancel();
     _recorder.dispose();
     _speech.stop();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -199,6 +206,10 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal> {
 
   @override
   Widget build(BuildContext context) {
+    final themeColorIndex = context.watch<NotesProvider>().themeColorIndex;
+    final accentGradient = AppTheme.accentGradient(themeColorIndex);
+    final accentColor = accentGradient.first;
+
     return Container(
       padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).padding.bottom + 20),
       decoration: BoxDecoration(
@@ -224,7 +235,7 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)]),
+                  gradient: LinearGradient(colors: accentGradient),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(Icons.mic, color: Colors.white, size: 22),
@@ -265,11 +276,11 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppTheme.primaryPurple.withOpacity(0.15)
+                          ? accentColor.withOpacity(0.15)
                           : AppTheme.getSurfaceColor(context),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isSelected ? AppTheme.primaryPurple : AppTheme.getDividerColor(context),
+                        color: isSelected ? accentColor : AppTheme.getDividerColor(context),
                         width: isSelected ? 2 : 1,
                       ),
                     ),
@@ -278,7 +289,7 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
-                        color: isSelected ? AppTheme.primaryPurple : AppTheme.getTextPrimaryColor(context),
+                        color: isSelected ? accentColor : AppTheme.getTextPrimaryColor(context),
                       ),
                     ),
                   ),
@@ -293,7 +304,7 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal> {
                 icon: const Icon(Icons.mic, color: Colors.white),
                 label: const Text('Start Recording', style: TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryPurple,
+                  backgroundColor: accentColor,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   minimumSize: const Size.fromHeight(48),
                 ),
@@ -344,21 +355,62 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal> {
                 ),
               ),
             const SizedBox(height: 24),
-            GestureDetector(
-              onTap: _state == _RecState.recording ? _stopAndSave : null,
-              child: Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: _state == _RecState.recording ? Colors.red : Colors.grey,
-                  shape: BoxShape.circle,
-                ),
-                child: _state == _RecState.processing
-                    ? const Padding(
-                        padding: EdgeInsets.all(20),
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                      )
-                    : const Icon(Icons.stop, color: Colors.white, size: 32),
+            SizedBox(
+              width: 200,
+              height: 200,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (_state == _RecState.recording)
+                    ...List.generate(3, (i) {
+                      return AnimatedBuilder(
+                        animation: _pulseController,
+                        builder: (context, child) {
+                          final t = (_pulseController.value + i / 3) % 1.0;
+                          return Opacity(
+                            opacity: (1.0 - t).clamp(0.0, 1.0),
+                            child: Transform.scale(
+                              scale: 1.0 + t * 1.6,
+                              child: Container(
+                                width: 84,
+                                height: 84,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: accentColor, width: 2),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }),
+                  GestureDetector(
+                    onTap: _state == _RecState.recording ? _stopAndSave : null,
+                    child: Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        color: _state == _RecState.recording ? accentColor : Colors.grey,
+                        shape: BoxShape.circle,
+                        boxShadow: _state == _RecState.recording
+                            ? [
+                                BoxShadow(
+                                  color: accentColor.withOpacity(0.4),
+                                  blurRadius: 16,
+                                  spreadRadius: 2,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: _state == _RecState.processing
+                          ? const Padding(
+                              padding: EdgeInsets.all(24),
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                            )
+                          : const Icon(Icons.stop, color: Colors.white, size: 34),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 8),
