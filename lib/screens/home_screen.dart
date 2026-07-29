@@ -328,8 +328,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final visibleNotes = notes.take(_visibleCount).toList();
     final hasMore = _visibleCount < notes.length;
 
-    // Group by date (overrides grid/reorderable views since neither applies
-    // meaningfully once notes are split into date sections)
+    // Group by date (drag-to-reorder doesn't apply once notes are split
+    // into date sections, but the grid/list toggle is still honored)
     if (notesProvider.groupByDate) {
       return _buildGroupedByDateList(visibleNotes, hasMore, notes.length);
     }
@@ -521,18 +521,41 @@ class _HomeScreenState extends State<HomeScreen> {
     return DateFormat('MMMM yyyy').format(date);
   }
 
+  Future<void> _handleNoteTap(BuildContext context, Note note, NotesProvider notesProvider) async {
+    if (note.isLocked) {
+      final provider = context.read<NotesProvider>();
+      if (provider.appLockEnabled) {
+        final unlocked = await showModalBottomSheet<bool>(
+          context: context, isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => LockBottomSheet(biometricEnabled: provider.biometricEnabled),
+        );
+        if (unlocked != true) return;
+      }
+    }
+    if (!context.mounted) return;
+    _openNote(context, note);
+  }
+
+  int _colorIndexFor(int index) => index % 2 == 0
+      ? (index ~/ 2) % AppTheme.noteCardColors.length
+      : ((index ~/ 2) + AppTheme.noteCardColors.length ~/ 2) % AppTheme.noteCardColors.length;
+
   Widget _buildGroupedByDateList(List<Note> visibleNotes, bool hasMore, int totalCount) {
     final notesProvider = context.read<NotesProvider>();
-    final items = <Object>[];
-    String? lastLabel;
-    visibleNotes.asMap().forEach((index, note) {
+    final isGrid = notesProvider.isGridView;
+
+    final sections = <MapEntry<String, List<Note>>>[];
+    for (final note in visibleNotes) {
       final label = _dateGroupLabel(note.createdAt);
-      if (label != lastLabel) {
-        items.add(label);
-        lastLabel = label;
+      if (sections.isEmpty || sections.last.key != label) {
+        sections.add(MapEntry(label, [note]));
+      } else {
+        sections.last.value.add(note);
       }
-      items.add(MapEntry(index, note));
-    });
+    }
+
+    int flatIndex = 0;
 
     return Column(
       children: [
@@ -540,59 +563,76 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView.builder(
             controller: _scrollController,
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: items.length,
-            itemBuilder: (context, itemIndex) {
-              final item = items[itemIndex];
-              if (item is String) {
-                return Padding(
-                  padding: EdgeInsets.fromLTRB(4, itemIndex == 0 ? 8 : 20, 4, 8),
-                  child: Text(
-                    item,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.getTextSecondaryColor(context),
-                    ),
+            itemCount: sections.length,
+            itemBuilder: (context, sectionIndex) {
+              final section = sections[sectionIndex];
+              final header = Padding(
+                padding: EdgeInsets.fromLTRB(4, sectionIndex == 0 ? 8 : 20, 4, 8),
+                child: Text(
+                  section.key,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.getTextSecondaryColor(context),
                   ),
+                ),
+              );
+
+              final startIndex = flatIndex;
+              flatIndex += section.value.length;
+
+              if (isGrid) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    header,
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2, crossAxisSpacing: 12,
+                        mainAxisSpacing: 12, childAspectRatio: 0.85,
+                      ),
+                      itemCount: section.value.length,
+                      itemBuilder: (context, i) {
+                        final note = section.value[i];
+                        final index = startIndex + i;
+                        return _GridNoteCard(
+                          key: ValueKey(note.id),
+                          note: note,
+                          colorIndex: _colorIndexFor(index),
+                          onTap: () => _handleNoteTap(context, note, notesProvider),
+                          onMenuTap: () => _showNoteOptionsMenu(context, note, notesProvider),
+                        );
+                      },
+                    ),
+                  ],
                 );
               }
-              final entry = item as MapEntry<int, Note>;
-              final note = entry.value;
-              final index = entry.key;
-              final isVoicePlaying = note.type == NoteType.voice &&
-                  _currentlyPlayingId == note.id && _isPlaying;
-              return _NoteCard(
-                key: ValueKey(note.id),
-                note: note,
-                colorIndex: index % 2 == 0
-                    ? (index ~/ 2) % AppTheme.noteCardColors.length
-                    : ((index ~/ 2) + AppTheme.noteCardColors.length ~/ 2) % AppTheme.noteCardColors.length,
-                isPlaying: isVoicePlaying,
-                isLoadingAudio: _loadingNoteId == note.id,
-                onPlayPause: note.type == NoteType.voice ? () => _playPause(note) : null,
-                onDrawingEdit: note.type == NoteType.drawing
-                    ? () => _showDrawingEditOptions(context, note, notesProvider) : null,
-                onTap: () async {
-                  if (note.isLocked) {
-                    final provider = context.read<NotesProvider>();
-                    if (provider.appLockEnabled) {
-                      final unlocked = await showModalBottomSheet<bool>(
-                        context: context, isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) => LockBottomSheet(biometricEnabled: provider.biometricEnabled),
-                      );
-                      if (unlocked != true) return;
-                    }
-                  }
-                  if (!context.mounted) return;
-                  if (note.type == NoteType.drawing) _showDrawingPreview(context, note);
-                  else if (note.type == NoteType.photo) showPhotoPreviewModal(context, note);
-                  else if (note.type == NoteType.checklist) showChecklistModal(context, note: note);
-                  else if (note.type == NoteType.document) showDocumentNoteModal(context, note);
-                  else if (note.type == NoteType.voice) _showVoiceNoteModal(context, note);
-                  else showTextNoteModal(context, note: note);
-                },
-                onMenuTap: () => _showNoteOptionsMenu(context, note, notesProvider),
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  header,
+                  ...section.value.asMap().entries.map((e) {
+                    final note = e.value;
+                    final index = startIndex + e.key;
+                    final isVoicePlaying = note.type == NoteType.voice &&
+                        _currentlyPlayingId == note.id && _isPlaying;
+                    return _NoteCard(
+                      key: ValueKey(note.id),
+                      note: note,
+                      colorIndex: _colorIndexFor(index),
+                      isPlaying: isVoicePlaying,
+                      isLoadingAudio: _loadingNoteId == note.id,
+                      onPlayPause: note.type == NoteType.voice ? () => _playPause(note) : null,
+                      onDrawingEdit: note.type == NoteType.drawing
+                          ? () => _showDrawingEditOptions(context, note, notesProvider) : null,
+                      onTap: () => _handleNoteTap(context, note, notesProvider),
+                      onMenuTap: () => _showNoteOptionsMenu(context, note, notesProvider),
+                    );
+                  }),
+                ],
               );
             },
           ),
