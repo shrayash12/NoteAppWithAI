@@ -23,7 +23,23 @@ void showSmartVoiceNoteModal(BuildContext context) {
   );
 }
 
-enum _RecState { starting, recording, processing, error }
+enum _RecState { selectingLanguage, starting, recording, processing, error }
+
+/// Matches AppLocalizations.supportedLocales — the same 11 languages the
+/// app's own settings support.
+const List<Map<String, String>> _kVoiceNoteLanguages = [
+  {'code': 'en', 'name': 'English', 'flag': '🇬🇧', 'locale': 'en_US'},
+  {'code': 'es', 'name': 'Español', 'flag': '🇪🇸', 'locale': 'es_ES'},
+  {'code': 'fr', 'name': 'Français', 'flag': '🇫🇷', 'locale': 'fr_FR'},
+  {'code': 'de', 'name': 'Deutsch', 'flag': '🇩🇪', 'locale': 'de_DE'},
+  {'code': 'ar', 'name': 'العربية', 'flag': '🇸🇦', 'locale': 'ar_SA'},
+  {'code': 'hi', 'name': 'हिन्दी', 'flag': '🇮🇳', 'locale': 'hi_IN'},
+  {'code': 'zh', 'name': '中文', 'flag': '🇨🇳', 'locale': 'zh_CN'},
+  {'code': 'ja', 'name': '日本語', 'flag': '🇯🇵', 'locale': 'ja_JP'},
+  {'code': 'pt', 'name': 'Português', 'flag': '🇵🇹', 'locale': 'pt_PT'},
+  {'code': 'it', 'name': 'Italiano', 'flag': '🇮🇹', 'locale': 'it_IT'},
+  {'code': 'ko', 'name': '한국어', 'flag': '🇰🇷', 'locale': 'ko_KR'},
+];
 
 class SmartVoiceNoteModal extends StatefulWidget {
   const SmartVoiceNoteModal({super.key});
@@ -36,18 +52,16 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal> {
   final AudioRecorder _recorder = AudioRecorder();
   final stt.SpeechToText _speech = stt.SpeechToText();
 
-  _RecState _state = _RecState.starting;
+  _RecState _state = _RecState.selectingLanguage;
   String? _recordingPath;
   String _transcript = '';
   int _duration = 0;
   Timer? _timer;
   String? _errorMessage;
+  String _selectedLanguageCode = 'en';
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
-  }
+  String get _selectedLocaleId => _kVoiceNoteLanguages
+      .firstWhere((l) => l['code'] == _selectedLanguageCode)['locale']!;
 
   @override
   void dispose() {
@@ -64,6 +78,8 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal> {
   }
 
   Future<void> _start() async {
+    setState(() => _state = _RecState.starting);
+
     final hasAudioPermission = await _recorder.hasPermission();
     if (!hasAudioPermission) {
       setState(() {
@@ -97,6 +113,7 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal> {
             partialResults: true,
             listenFor: const Duration(minutes: 10),
             pauseFor: const Duration(seconds: 30),
+            localeId: _selectedLocaleId,
           ),
         );
       }
@@ -224,7 +241,65 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal> {
             ],
           ),
           const SizedBox(height: 24),
-          if (_state == _RecState.error) ...[
+          if (_state == _RecState.selectingLanguage) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Speak in:',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.getTextSecondaryColor(context),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _kVoiceNoteLanguages.map((lang) {
+                final isSelected = _selectedLanguageCode == lang['code'];
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedLanguageCode = lang['code']!),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppTheme.primaryPurple.withOpacity(0.15)
+                          : AppTheme.getSurfaceColor(context),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? AppTheme.primaryPurple : AppTheme.getDividerColor(context),
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Text(
+                      '${lang['flag']} ${lang['name']}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                        color: isSelected ? AppTheme.primaryPurple : AppTheme.getTextPrimaryColor(context),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _start,
+                icon: const Icon(Icons.mic, color: Colors.white),
+                label: const Text('Start Recording', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryPurple,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  minimumSize: const Size.fromHeight(48),
+                ),
+              ),
+            ),
+          ] else if (_state == _RecState.error) ...[
             Text(
               _errorMessage ?? 'Something went wrong.',
               style: const TextStyle(color: Colors.red),
