@@ -1,7 +1,7 @@
 name: smartnotes_app
 description: AI-Powered Note Taking App
 publish_to: 'none'
-version: 1.0.0+4
+version: 1.0.0+5
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -16,6 +16,7 @@ dependencies:
   uuid: ^4.2.1
   intl: ^0.20.2
   record: ^6.0.0
+  speech_to_text: ^7.0.0
   path_provider: ^2.1.2
   audioplayers: ^6.0.0
   permission_handler: ^11.3.0

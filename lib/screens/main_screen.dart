@@ -17,6 +17,7 @@ import 'text_note_screen.dart';
 import 'drawing_screen.dart';
 import 'checklist_screen.dart';
 import 'document_scanner_screen.dart';
+import '../widgets/smart_voice_note_modal.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -228,13 +229,16 @@ class _AIFloatingButtonState extends State<_AIFloatingButton>
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (_) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         decoration: BoxDecoration(
           color: AppTheme.getCardColor(context),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: Column(
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -330,7 +334,20 @@ class _AIFloatingButtonState extends State<_AIFloatingButton>
                 launchDocumentScanner(context, autoSave: true);
               },
             ),
+            const SizedBox(height: 10),
+            _AIFeatureTile(
+              icon: Icons.mic,
+              label: 'Smart Voice Note',
+              description: 'Speak, transcribe, organize',
+              usageLabel: '',
+              gradient: gradient,
+              onTap: () {
+                Navigator.pop(context);
+                showSmartVoiceNoteModal(context);
+              },
+            ),
           ],
+        ),
         ),
       ),
     );

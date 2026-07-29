@@ -403,5 +403,85 @@ class Folder {
       icon: Icons.insert_drive_file_outlined,
       color: const Color(0xFF6B7280),
     ),
+    // Smart Voice Note auto-organize folders (Work/Personal/Ideas reuse the
+    // existing folders above)
+    Folder(
+      id: 'meeting',
+      name: 'Meeting',
+      icon: Icons.groups_outlined,
+      color: const Color(0xFF3B82F6),
+    ),
+    Folder(
+      id: 'todo',
+      name: 'To-Do',
+      icon: Icons.check_circle_outline,
+      color: const Color(0xFF10B981),
+    ),
+    Folder(
+      id: 'grocery',
+      name: 'Grocery',
+      icon: Icons.local_grocery_store_outlined,
+      color: const Color(0xFF84CC16),
+    ),
+    Folder(
+      id: 'shopping',
+      name: 'Shopping',
+      icon: Icons.shopping_cart_outlined,
+      color: const Color(0xFFF59E0B),
+    ),
+    Folder(
+      id: 'health',
+      name: 'Health',
+      icon: Icons.favorite_outline,
+      color: const Color(0xFFEF4444),
+    ),
+    Folder(
+      id: 'travel',
+      name: 'Travel',
+      icon: Icons.flight_outlined,
+      color: const Color(0xFF06B6D4),
+    ),
+    Folder(
+      id: 'study',
+      name: 'Study',
+      icon: Icons.school_outlined,
+      color: const Color(0xFF8B5CF6),
+    ),
+    Folder(
+      id: 'finance',
+      name: 'Finance',
+      icon: Icons.account_balance_wallet_outlined,
+      color: const Color(0xFF059669),
+    ),
+    Folder(
+      id: 'journal',
+      name: 'Journal',
+      icon: Icons.book_outlined,
+      color: const Color(0xFFD946EF),
+    ),
+    Folder(
+      id: 'recipe',
+      name: 'Recipe',
+      icon: Icons.restaurant_outlined,
+      color: const Color(0xFFF97316),
+    ),
+    Folder(
+      id: 'fitness',
+      name: 'Fitness',
+      icon: Icons.fitness_center_outlined,
+      color: const Color(0xFFDC2626),
+    ),
+    Folder(
+      id: 'project',
+      name: 'Project',
+      icon: Icons.folder_special_outlined,
+      color: const Color(0xFF6366F1),
+    ),
+    Folder(
+      id: 'quick_note',
+      name: 'Quick Note',
+      icon: Icons.mic_none_outlined,
+      color: const Color(0xFF6B7280),
+    ),
   ];
 }
