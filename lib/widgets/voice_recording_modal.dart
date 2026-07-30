@@ -33,8 +33,9 @@ class _VoiceRecordingModalState extends State<VoiceRecordingModal> {
 
   bool _isSaving = false;
 
-  // Simulated waveform data
-  List<double> _waveformData = List.generate(25, (i) => 0.3);
+  // Live waveform, driven by the recorder's real mic amplitude
+  List<double> _waveformData = List.generate(25, (i) => 0.05);
+  StreamSubscription<Amplitude>? _amplitudeSub;
 
   // Folders that users can assign notes to
   static final List<Folder> _assignableFolders = Folder.defaultFolders
@@ -58,6 +59,7 @@ class _VoiceRecordingModalState extends State<VoiceRecordingModal> {
   @override
   void dispose() {
     _timer?.cancel();
+    _amplitudeSub?.cancel();
     _recorder.dispose();
     super.dispose();
   }
@@ -115,15 +117,23 @@ class _VoiceRecordingModalState extends State<VoiceRecordingModal> {
         setState(() {
           _state = RecordingState.recording;
           _recordingDuration = 0;
+          _waveformData = List.generate(25, (i) => 0.05);
         });
 
         _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          if (mounted) setState(() => _recordingDuration++);
+        });
+
+        // Live waveform: sample real mic amplitude and scroll it through
+        // the bars, rather than a canned/simulated pattern.
+        _amplitudeSub = _recorder
+            .onAmplitudeChanged(const Duration(milliseconds: 120))
+            .listen((amp) {
+          if (!mounted) return;
+          // dBFS: -50 (near silence) to 0 (peak) mapped to 0.05-1.0
+          final normalized = ((amp.current + 50) / 50).clamp(0.05, 1.0);
           setState(() {
-            _recordingDuration++;
-            // Simulate waveform animation
-            _waveformData = List.generate(25, (i) =>
-              0.2 + (0.8 * (i % 3 == 0 ? 0.9 : (i % 2 == 0 ? 0.5 : 0.3)))
-            );
+            _waveformData = [..._waveformData.skip(1), normalized];
           });
         });
       } else {
@@ -140,6 +150,7 @@ class _VoiceRecordingModalState extends State<VoiceRecordingModal> {
   Future<void> _stopRecording() async {
     try {
       _timer?.cancel();
+      _amplitudeSub?.cancel();
       final path = await _recorder.stop();
 
       if (kIsWeb && path != null) {
@@ -633,6 +644,7 @@ class _VoiceRecordingModalState extends State<VoiceRecordingModal> {
                   ? null
                   : () {
                       _timer?.cancel();
+                      _amplitudeSub?.cancel();
                       if (_state == RecordingState.recording) {
                         _recorder.stop();
                       }
