@@ -7,6 +7,13 @@ import '../providers/notes_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/gradient_header.dart';
 import '../widgets/filter_bottom_sheet.dart';
+import '../widgets/drawing_preview_dialog.dart';
+import '../widgets/voice_note_preview_sheet.dart';
+import '../widgets/photo_preview_modal.dart';
+import '../widgets/document_note_modal.dart';
+import '../widgets/lock_bottom_sheet.dart';
+import 'checklist_screen.dart';
+import 'text_note_screen.dart';
 import 'folder_detail_screen.dart';
 import '../l10n/app_localizations.dart';
 
@@ -22,6 +29,51 @@ class _FoldersScreenState extends State<FoldersScreen> {
   String? _hoveredFolderId;
 
   final List<String> _droppableFolderIds = ['work', 'personal', 'ideas'];
+
+  Future<void> _openNote(BuildContext context, Note note) async {
+    if (note.isLocked) {
+      final provider = context.read<NotesProvider>();
+      if (provider.appLockEnabled) {
+        final unlocked = await showModalBottomSheet<bool>(
+          context: context, isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => LockBottomSheet(biometricEnabled: provider.biometricEnabled),
+        );
+        if (unlocked != true) return;
+      }
+    }
+    if (!context.mounted) return;
+    if (note.type == NoteType.drawing) {
+      showDrawingPreview(context, note);
+    } else if (note.type == NoteType.photo) {
+      showPhotoPreviewModal(context, note);
+    } else if (note.type == NoteType.checklist) {
+      showChecklistModal(context, note: note);
+    } else if (note.type == NoteType.document) {
+      showDocumentNoteModal(context, note);
+    } else if (note.type == NoteType.voice) {
+      showVoiceNotePreview(context, note);
+    } else {
+      showTextNoteModal(context, note: note);
+    }
+  }
+
+  void _openFolder(BuildContext context, Folder folder) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, _) => FolderDetailScreen(folder: folder),
+        transitionsBuilder: (context, animation, _, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic)),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
+    );
+  }
 
   void _onNoteDropped(Note note, String folderId) {
     final notesProvider = context.read<NotesProvider>();
@@ -57,6 +109,10 @@ class _FoldersScreenState extends State<FoldersScreen> {
             GradientHeader(
               title: l10n.navFolders,
               subtitle: l10n.foldersSubtitle,
+              searchBar: SearchBarWidget(
+                onNoteSelected: (note) => _openNote(context, note),
+                onFolderSelected: (folder) => _openFolder(context, folder),
+              ),
               isGridView: notesProvider.isGridView,
               onViewToggle: () => notesProvider.toggleGridView(),
               onFilterTap: () => showFilterBottomSheet(context),

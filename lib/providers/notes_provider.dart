@@ -103,6 +103,15 @@ class NotesProvider extends ChangeNotifier {
     }).toList();
   }
 
+  // Search folders by name
+  List<Folder> searchFolders(String query) {
+    if (query.isEmpty) return [];
+    final lowerQuery = query.toLowerCase();
+    return Folder.defaultFolders
+        .where((folder) => folder.name.toLowerCase().contains(lowerQuery))
+        .toList();
+  }
+
   // Targeted update of OCR text — avoids overwriting other fields
   Future<void> updateNoteOcrText(String noteId, String? ocrText) async {
     try {

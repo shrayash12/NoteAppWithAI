@@ -74,6 +74,7 @@ class _GradientHeaderState extends State<GradientHeader> {
                 hintText: widget.searchBar!.hintText,
                 onChanged: widget.searchBar!.onChanged,
                 onNoteSelected: widget.searchBar!.onNoteSelected,
+                onFolderSelected: widget.searchBar!.onFolderSelected,
                 autofocus: true,
               ),
             )
@@ -188,6 +189,7 @@ class SearchBarWidget extends StatefulWidget {
   final String hintText;
   final ValueChanged<String>? onChanged;
   final Function(Note)? onNoteSelected;
+  final Function(Folder)? onFolderSelected;
   final bool autofocus;
 
   const SearchBarWidget({
@@ -195,6 +197,7 @@ class SearchBarWidget extends StatefulWidget {
     this.hintText = '',
     this.onChanged,
     this.onNoteSelected,
+    this.onFolderSelected,
     this.autofocus = false,
   });
 
@@ -208,6 +211,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
   List<Note> _suggestions = [];
+  List<Folder> _folderSuggestions = [];
   bool _showSuggestions = false;
 
   @override
@@ -241,7 +245,11 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
     final notesProvider = context.read<NotesProvider>();
     setState(() {
       _suggestions = notesProvider.searchNotes(query);
-      _showSuggestions = query.isNotEmpty && _suggestions.isNotEmpty;
+      _folderSuggestions = widget.onFolderSelected != null
+          ? notesProvider.searchFolders(query)
+          : [];
+      _showSuggestions = query.isNotEmpty &&
+          (_suggestions.isNotEmpty || _folderSuggestions.isNotEmpty);
     });
 
     if (_showSuggestions) {
@@ -257,6 +265,17 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
   void _showOverlay() {
     _removeOverlay();
 
+    final folders = _folderSuggestions.take(4).toList();
+    final notes = _suggestions.take(5).toList();
+    final showBothLabels = folders.isNotEmpty && notes.isNotEmpty;
+    // 0 = "Folders" label, 1 = "Notes" label, otherwise a real entry
+    final items = <Object>[
+      if (showBothLabels) 'Folders',
+      ...folders,
+      if (showBothLabels) 'Notes',
+      ...notes,
+    ];
+
     _overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
         width: MediaQuery.of(context).size.width - 40,
@@ -268,7 +287,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
             elevation: 8,
             borderRadius: BorderRadius.circular(12),
             child: Container(
-              constraints: const BoxConstraints(maxHeight: 280),
+              constraints: const BoxConstraints(maxHeight: 320),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
@@ -276,9 +295,36 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
               child: ListView.builder(
                 shrinkWrap: true,
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: _suggestions.length > 5 ? 5 : _suggestions.length,
+                itemCount: items.length,
                 itemBuilder: (context, index) {
-                  final note = _suggestions[index];
+                  final item = items[index];
+                  if (item is String) {
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                      child: Text(
+                        item,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    );
+                  }
+                  if (item is Folder) {
+                    return _FolderSuggestionItem(
+                      folder: item,
+                      onTap: () {
+                        _controller.clear();
+                        _removeOverlay();
+                        _focusNode.unfocus();
+                        context.read<NotesProvider>().clearSearch();
+                        widget.onFolderSelected?.call(item);
+                      },
+                    );
+                  }
+                  final note = item as Note;
                   return _SuggestionItem(
                     note: note,
                     searchQuery: _controller.text,
@@ -307,6 +353,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
     context.read<NotesProvider>().clearSearch();
     setState(() {
       _suggestions = [];
+      _folderSuggestions = [];
       _showSuggestions = false;
     });
   }
@@ -360,6 +407,51 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
                   size: 20,
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FolderSuggestionItem extends StatelessWidget {
+  final Folder folder;
+  final VoidCallback onTap;
+
+  const _FolderSuggestionItem({
+    required this.folder,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: folder.color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(folder.icon, color: folder.color, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                folder.name,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 18, color: Colors.grey.shade400),
           ],
         ),
       ),
