@@ -61,7 +61,12 @@ class DocumentCategory {
     icon: Icons.medical_information_outlined,
     color: Color(0xFFEF4444),
     folderId: 'medical',
-    keywords: ['patient', 'hemoglobin', 'cbc', 'laboratory', 'diagnosis', 'physician', 'hospital', 'prescription', 'dosage'],
+    keywords: [
+      'patient', 'hemoglobin', 'cbc', 'laboratory', 'diagnosis', 'physician', 'hospital', 'prescription', 'dosage',
+      'pathology', 'specimen', 'sample id', 'reference range', 'reference interval', 'biochemistry', 'hematology',
+      'urine routine', 'blood test', 'sgot', 'sgpt', 'creatinine', 'bilirubin', 'triglycerides', 'cholesterol',
+      'thyroid', 'tsh', 'wbc count', 'rbc count', 'platelet count', 'collected on', 'reported on',
+    ],
   );
 
   static const identity = DocumentCategory(
