@@ -9,6 +9,7 @@ import '../providers/usage_provider.dart';
 import '../screens/upgrade_screen.dart';
 import '../services/ai_service.dart';
 import '../theme/app_theme.dart';
+import 'ai_disclosure_dialog.dart';
 
 enum AIActionType { enhance, summarize, translate }
 
@@ -84,6 +85,11 @@ class _AIActionSheetState extends State<_AIActionSheet> {
 
   Future<void> _run() async {
     final l10n = AppLocalizations.of(context);
+
+    final allowed = await ensureAiDisclosureAccepted(context);
+    if (!allowed) return;
+    if (!mounted) return;
+
     setState(() {
       _loading = true;
       _error = null;
@@ -156,17 +162,35 @@ class _AIActionSheetState extends State<_AIActionSheet> {
     final colorIndex = context.watch<NotesProvider>().themeColorIndex;
     final gradient = AppTheme.accentGradient(colorIndex);
 
+    final screenHeight = MediaQuery.of(context).size.height;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    // When the keyboard is up, the padding below already reserves that
+    // space — the height cap must shrink to match or the sheet's content
+    // overflows off the top of the screen instead of scrolling.
+    final maxSheetHeight = keyboardHeight > 0
+        ? screenHeight - keyboardHeight - MediaQuery.of(context).padding.top
+        : screenHeight * 0.85;
+
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(bottom: keyboardHeight),
       child: Container(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+        constraints: BoxConstraints(maxHeight: maxSheetHeight),
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
         decoration: BoxDecoration(
           color: AppTheme.getCardColor(context),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: SingleChildScrollView(
-          child: Column(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Everything except the Generate button scrolls in the space
+            // above it, so the button stays reachable even when the
+            // keyboard plus a long chip list (Translate) eat most of the
+            // sheet's height.
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -264,33 +288,6 @@ class _AIActionSheetState extends State<_AIActionSheet> {
                   }).toList(),
                 ),
               ],
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: gradient),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _loading ? null : _run,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: _loading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : Text(l10n.aiRun,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  ),
-                ),
-              ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
@@ -349,7 +346,37 @@ class _AIActionSheetState extends State<_AIActionSheet> {
                 ),
               ],
             ],
-          ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: gradient),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _run,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: _loading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(l10n.aiRun,
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

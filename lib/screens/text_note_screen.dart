@@ -5,6 +5,7 @@ import '../models/note.dart';
 import '../providers/notes_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_notification.dart';
+import '../widgets/ai_disclosure_dialog.dart';
 import '../services/ai_service.dart';
 import '../l10n/app_localizations.dart';
 
@@ -150,6 +151,10 @@ class _TextNoteModalState extends State<TextNoteModal> {
       );
       return;
     }
+
+    final allowed = await ensureAiDisclosureAccepted(context);
+    if (!allowed) return;
+    if (!mounted) return;
 
     setState(() => _aiEnhanceLoading = true);
     try {
