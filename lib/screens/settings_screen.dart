@@ -14,6 +14,7 @@ import '../widgets/gradient_header.dart';
 import '../utils/notification_service.dart';
 import '../utils/app_lock_service.dart';
 import '../utils/storage_helper.dart';
+import '../services/account_service.dart';
 import '../widgets/lock_bottom_sheet.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -951,6 +952,70 @@ class _AccountCard extends StatefulWidget {
 
 class _AccountCardState extends State<_AccountCard> {
   bool _uploadingPhoto = false;
+  bool _isDeletingAccount = false;
+
+  Future<void> _confirmDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account?'),
+        content: const Text(
+          'This will permanently delete your account and all your notes. '
+          'This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _deleteAccount();
+  }
+
+  Future<void> _deleteAccount() async {
+    // Captured before the async gap so sign-out can still run even if this
+    // widget is unmounted mid-flight (e.g. the user backgrounds the app or
+    // navigates away from Settings while the deletion call is in progress) —
+    // the account may already be deleted server-side by then, and skipping
+    // sign-out would leave the app stuck on a session for a deleted account.
+    final notesProvider = context.read<NotesProvider>();
+    if (mounted) setState(() => _isDeletingAccount = true);
+
+    String? errorMessage;
+    try {
+      await AccountService.deleteAccount();
+    } on AccountServiceException catch (e) {
+      errorMessage = e.message;
+    } catch (e) {
+      errorMessage = 'Failed to delete account: $e';
+    }
+
+    // Sign out regardless of outcome: a failed deletion for this app almost
+    // always means the account is already gone (or in an unknown state) —
+    // keeping a local session alive for it just leaves the app stuck. If it
+    // genuinely still exists, the user can sign back in and try again.
+    notesProvider.clearOnSignOut();
+    await FirebaseAuth.instance.signOut();
+    // AuthWrapper will navigate to LoginScreen
+
+    if (errorMessage != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$errorMessage You have been signed out — sign back in to check.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+
+    if (mounted) setState(() => _isDeletingAccount = false);
+  }
 
   Future<void> _pickAndUploadPhoto() async {
     final picker = ImagePicker();
@@ -1177,7 +1242,6 @@ class _AccountCardState extends State<_AccountCard> {
           Divider(height: 1, color: widget.textSecondary.withOpacity(0.15), indent: 16, endIndent: 16),
           InkWell(
             onTap: widget.onSignOut,
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
@@ -1194,6 +1258,37 @@ class _AccountCardState extends State<_AccountCard> {
                   ),
                   const Spacer(),
                   Icon(Icons.chevron_right, color: Colors.red.shade300, size: 20),
+                ],
+              ),
+            ),
+          ),
+          Divider(height: 1, color: widget.textSecondary.withOpacity(0.15), indent: 16, endIndent: 16),
+          InkWell(
+            onTap: _isDeletingAccount ? null : _confirmDeleteAccount,
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Icon(Icons.delete_forever_outlined, color: Colors.red.shade400, size: 22),
+                  const SizedBox(width: 14),
+                  Text(
+                    'Delete Account',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.red.shade400,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (_isDeletingAccount)
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red.shade300),
+                    )
+                  else
+                    Icon(Icons.chevron_right, color: Colors.red.shade300, size: 20),
                 ],
               ),
             ),

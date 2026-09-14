@@ -111,6 +111,69 @@ export const getUsageStatus = onCall(
   }
 );
 
+// Fields on a note document that may hold a Firebase Storage download URL.
+const NOTE_STORAGE_FIELDS = [
+  "imagePath",
+  "originalImagePath",
+  "voicePath",
+  "pdfPath",
+];
+
+// Permanently deletes a user's account: their uploaded files, all Firestore
+// data, and the Firebase Auth account itself. Routed through a callable
+// (rather than client-side `currentUser.delete()`) so it isn't subject to
+// Firebase Auth's "requires-recent-login" restriction — the callable only
+// needs a valid ID token, not a freshly-issued one.
+export const deleteAccount = onCall(
+  {region: "us-central1"},
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "You must be signed in.");
+    }
+    const uid = request.auth.uid;
+    const userRef = admin.firestore().collection("users").doc(uid);
+    const bucket = admin.storage().bucket();
+
+    // Best-effort: delete each note's Storage files before wiping Firestore.
+    const notesSnap = await userRef.collection("notes").get();
+    for (const doc of notesSnap.docs) {
+      const data = doc.data();
+      for (const field of NOTE_STORAGE_FIELDS) {
+        const url = data[field];
+        if (
+          typeof url === "string" &&
+          url.startsWith("https://firebasestorage.googleapis.com/")
+        ) {
+          try {
+            const match = url.match(/\/o\/([^?]+)/);
+            if (match) {
+              await bucket.file(decodeURIComponent(match[1])).delete();
+            }
+          } catch (e) {
+            console.warn(
+              `deleteAccount: failed to delete storage file for note ${doc.id}:`,
+              e
+            );
+          }
+        }
+      }
+    }
+    try {
+      await bucket.file(`profile_photos/${uid}.jpg`).delete();
+    } catch (e) {
+      // No profile photo set — expected for most users.
+    }
+
+    // Wipe Firestore: the users/{uid} doc and its notes subcollection.
+    await admin.firestore().recursiveDelete(userRef);
+
+    // Finally, delete the Auth account itself.
+    await admin.auth().deleteUser(uid);
+
+    return {success: true};
+  }
+);
+
 // Maps RevenueCat product identifiers to internal plan names. These must
 // match exactly the product IDs configured in App Store Connect / Google
 // Play Console / RevenueCat.
