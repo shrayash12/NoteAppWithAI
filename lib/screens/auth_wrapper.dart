@@ -34,11 +34,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
     });
 
     // Listen to auth state changes
-    FirebaseAuth.instance.authStateChanges().listen((user) {
+    FirebaseAuth.instance.authStateChanges().listen((user) async {
       if (!mounted) return;
       final notesProvider = context.read<NotesProvider>();
       final usageProvider = context.read<UsageProvider>();
       if (user != null) {
+        // A guest who just completed real sign-in — copy their local notes
+        // into the new account before the Firestore stream takes over.
+        if (notesProvider.isGuestMode) {
+          await notesProvider.migrateGuestNotesToFirestore(user.uid);
+        }
         SubscriptionService.login(user.uid);
         usageProvider.refresh();
         if (_splashDone) {
@@ -50,7 +55,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
       } else {
         _pendingUser = null;
-        notesProvider.clearOnSignOut();
+        // Guests never sign in to Firebase, so this stream also fires with
+        // a null user for them — don't wipe their just-loaded local notes.
+        if (!notesProvider.isGuestMode) {
+          notesProvider.clearOnSignOut();
+        }
         usageProvider.clear();
         SubscriptionService.logout();
       }
@@ -59,12 +68,19 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    final notesProvider = context.watch<NotesProvider>();
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         // Show splash until minimum time has passed AND auth is resolved
         if (!_splashDone || snapshot.connectionState == ConnectionState.waiting) {
           return const SplashAnimationScreen();
+        }
+
+        // Guest mode wins regardless of Firebase auth state, so a
+        // relaunching guest lands straight in MainScreen.
+        if (notesProvider.isGuestMode) {
+          return const MainScreen();
         }
 
         if (snapshot.data == null) {

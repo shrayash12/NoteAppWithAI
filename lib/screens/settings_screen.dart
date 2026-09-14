@@ -135,10 +135,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       cardColor: cardColor,
                       textPrimary: textPrimary,
                       textSecondary: textSecondary,
+                      isGuestMode: notesProvider.isGuestMode,
                       onSignOut: () async {
                         await GoogleSignIn.instance.signOut();
                         await FirebaseAuth.instance.signOut();
                         // AuthWrapper will navigate to LoginScreen
+                      },
+                      onSignIn: () async {
+                        await notesProvider.clearGuestData();
+                        // AuthWrapper watches isGuestMode and falls through
+                        // to LoginScreen since Firebase still has no user.
                       },
                     ),
                     const SizedBox(height: 24),
@@ -924,7 +930,9 @@ class _AccountCard extends StatefulWidget {
   final Color cardColor;
   final Color textPrimary;
   final Color textSecondary;
+  final bool isGuestMode;
   final VoidCallback onSignOut;
+  final VoidCallback onSignIn;
 
   const _AccountCard({
     required this.accent,
@@ -932,7 +940,9 @@ class _AccountCard extends StatefulWidget {
     required this.cardColor,
     required this.textPrimary,
     required this.textSecondary,
+    required this.isGuestMode,
     required this.onSignOut,
+    required this.onSignIn,
   });
 
   @override
@@ -980,10 +990,82 @@ class _AccountCardState extends State<_AccountCard> {
     }
   }
 
+  Widget _buildGuestCard(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: widget.cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: widget.textSecondary.withOpacity(0.15),
+                  ),
+                  child: Icon(Icons.person_outline, color: widget.textSecondary, size: 28),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Guest',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: widget.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Notes are stored on this device only',
+                        style: TextStyle(fontSize: 13, color: widget.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: widget.textSecondary.withOpacity(0.15), indent: 16, endIndent: 16),
+          InkWell(
+            onTap: widget.onSignIn,
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Icon(Icons.login_rounded, color: widget.accent, size: 22),
+                  const SizedBox(width: 14),
+                  Text(
+                    'Sign In to back up & sync',
+                    style: TextStyle(fontSize: 15, color: widget.accent, fontWeight: FontWeight.w500),
+                  ),
+                  const Spacer(),
+                  Icon(Icons.chevron_right, color: widget.accent.withOpacity(0.6), size: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const SizedBox.shrink();
+    if (user == null) {
+      return widget.isGuestMode ? _buildGuestCard(context) : const SizedBox.shrink();
+    }
 
     return Container(
       decoration: BoxDecoration(

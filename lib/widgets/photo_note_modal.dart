@@ -197,30 +197,46 @@ class _PhotoNoteModalState extends State<PhotoNoteModal> {
       debugPrint('PhotoNoteModal: pickedFile = $pickedFile');
 
       if (pickedFile != null && context.mounted) {
+        final notesProvider = Provider.of<NotesProvider>(context, listen: false);
+
+        if (notesProvider.isGuestMode && kIsWeb) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Photo notes require signing in on web.')),
+          );
+          return;
+        }
+
         setState(() => _isLoading = true);
         String savedPath;
         final fileName = 'photo_note_${const Uuid().v4()}.jpg';
 
-        // Upload to Firebase Storage on all platforms for reliable sync
-        debugPrint('PhotoNoteModal: Reading bytes from picked file...');
-        final bytes = await pickedFile.readAsBytes();
-        debugPrint('PhotoNoteModal: Got ${bytes.length} bytes, uploading to Firebase...');
-        savedPath = await StorageHelper.uploadToFirebase(
-          bytes,
-          'photos/$fileName',
-          'image/jpeg',
-        );
-        debugPrint('PhotoNoteModal: Upload complete, savedPath = $savedPath');
-
-        if (!kIsWeb) {
-          // Also save locally for offline access
+        if (notesProvider.isGuestMode) {
+          // Guests skip Storage entirely — keep the photo local.
           final appDir = await getApplicationDocumentsDirectory();
-          final localPath = '${appDir.path}/$fileName';
-          await file_helper.copyFile(pickedFile.path, localPath);
+          savedPath = '${appDir.path}/$fileName';
+          await file_helper.copyFile(pickedFile.path, savedPath);
+          debugPrint('PhotoNoteModal: Guest mode, saved locally at $savedPath');
+        } else {
+          // Upload to Firebase Storage on all platforms for reliable sync
+          debugPrint('PhotoNoteModal: Reading bytes from picked file...');
+          final bytes = await pickedFile.readAsBytes();
+          debugPrint('PhotoNoteModal: Got ${bytes.length} bytes, uploading to Firebase...');
+          savedPath = await StorageHelper.uploadToFirebase(
+            bytes,
+            'photos/$fileName',
+            'image/jpeg',
+          );
+          debugPrint('PhotoNoteModal: Upload complete, savedPath = $savedPath');
+
+          if (!kIsWeb) {
+            // Also save locally for offline access
+            final appDir = await getApplicationDocumentsDirectory();
+            final localPath = '${appDir.path}/$fileName';
+            await file_helper.copyFile(pickedFile.path, localPath);
+          }
         }
 
         // Create and save the note
-        final notesProvider = Provider.of<NotesProvider>(context, listen: false);
         final now = DateTime.now();
         final dateFormat = DateFormat('d/M/yyyy');
 

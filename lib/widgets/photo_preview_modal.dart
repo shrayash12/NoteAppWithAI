@@ -83,6 +83,18 @@ class _PhotoPreviewModalState extends State<PhotoPreviewModal> {
     final picker = ImagePicker();
 
     try {
+      final notesProvider = Provider.of<NotesProvider>(context, listen: false);
+      if (notesProvider.isGuestMode && kIsWeb) {
+        if (mounted) {
+          AnimatedNotification.show(
+            context,
+            type: NotificationType.error,
+            customMessage: 'Photo notes require signing in on web',
+          );
+        }
+        return;
+      }
+
       final XFile? pickedFile = await picker.pickImage(
         source: source,
         maxWidth: 1920,
@@ -100,22 +112,28 @@ class _PhotoPreviewModalState extends State<PhotoPreviewModal> {
         String savedPath;
         final fileName = 'photo_note_${const Uuid().v4()}.jpg';
 
-        // Upload to Firebase Storage on all platforms
-        final bytes = await pickedFile.readAsBytes();
-        savedPath = await StorageHelper.uploadToFirebase(
-          bytes,
-          'photos/$fileName',
-          'image/jpeg',
-        );
-        if (!kIsWeb) {
-          // Also save locally for offline access
+        if (notesProvider.isGuestMode) {
+          // Guests skip Storage entirely — keep the photo local.
           final appDir = await getApplicationDocumentsDirectory();
-          final localPath = '${appDir.path}/$fileName';
-          await file_helper.copyFile(pickedFile.path, localPath);
+          savedPath = '${appDir.path}/$fileName';
+          await file_helper.copyFile(pickedFile.path, savedPath);
+        } else {
+          // Upload to Firebase Storage on all platforms
+          final bytes = await pickedFile.readAsBytes();
+          savedPath = await StorageHelper.uploadToFirebase(
+            bytes,
+            'photos/$fileName',
+            'image/jpeg',
+          );
+          if (!kIsWeb) {
+            // Also save locally for offline access
+            final appDir = await getApplicationDocumentsDirectory();
+            final localPath = '${appDir.path}/$fileName';
+            await file_helper.copyFile(pickedFile.path, localPath);
+          }
         }
 
         // Update the note
-        final notesProvider = Provider.of<NotesProvider>(context, listen: false);
         final updatedNote = _currentNote.copyWith(
           imagePath: savedPath,
           updatedAt: DateTime.now(),
@@ -148,6 +166,18 @@ class _PhotoPreviewModalState extends State<PhotoPreviewModal> {
 
   Future<void> _scanDocument() async {
     try {
+      final notesProvider = Provider.of<NotesProvider>(context, listen: false);
+      if (notesProvider.isGuestMode && kIsWeb) {
+        if (mounted) {
+          AnimatedNotification.show(
+            context,
+            type: NotificationType.error,
+            customMessage: 'Document scanning requires signing in on web',
+          );
+        }
+        return;
+      }
+
       final List<String>? scannedPaths =
           await CunningDocumentScanner.getPictures(noOfPages: 1);
 
@@ -159,13 +189,20 @@ class _PhotoPreviewModalState extends State<PhotoPreviewModal> {
         }
 
         final fileName = 'photo_note_${const Uuid().v4()}.jpg';
-        final bytes = await file_helper.getFileBytes(scannedPaths.first);
-        final savedPath = bytes != null
-            ? await StorageHelper.uploadToFirebase(
-                bytes, 'photos/$fileName', 'image/jpeg')
-            : scannedPaths.first;
+        String savedPath;
+        if (notesProvider.isGuestMode) {
+          // Guests skip Storage entirely — copy into app storage for permanence.
+          final appDir = await getApplicationDocumentsDirectory();
+          savedPath = '${appDir.path}/$fileName';
+          await file_helper.copyFile(scannedPaths.first, savedPath);
+        } else {
+          final bytes = await file_helper.getFileBytes(scannedPaths.first);
+          savedPath = bytes != null
+              ? await StorageHelper.uploadToFirebase(
+                  bytes, 'photos/$fileName', 'image/jpeg')
+              : scannedPaths.first;
+        }
 
-        final notesProvider = Provider.of<NotesProvider>(context, listen: false);
         final updatedNote = _currentNote.copyWith(
           imagePath: savedPath,
           updatedAt: DateTime.now(),

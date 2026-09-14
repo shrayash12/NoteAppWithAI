@@ -52,7 +52,7 @@ Note _buildNoteFromScannerProvider(DocumentScannerProvider provider, {String? fo
     title: provider.title.isNotEmpty ? provider.title : 'Scanned Document',
     content: 'Scanned document – $pageCount page(s)',
     type: NoteType.document,
-    pdfPath: provider.uploadedPdfUrl,
+    pdfPath: provider.uploadedPdfUrl ?? provider.localPdfPath,
     imagePath: previewImagePath,
     originalImagePath: originalImagePath,
     folderId: folderId,
@@ -297,7 +297,8 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
 
   Future<void> _generatePdf() async {
     final provider = context.read<DocumentScannerProvider>();
-    await provider.generateAndUpload();
+    final isGuestMode = context.read<NotesProvider>().isGuestMode;
+    await provider.generateAndUpload(isGuestMode: isGuestMode);
   }
 
   Future<void> _saveNote() async {

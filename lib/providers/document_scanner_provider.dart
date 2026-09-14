@@ -141,8 +141,9 @@ class DocumentScannerProvider extends ChangeNotifier {
     }
   }
 
-  /// Generate PDF and upload to Firebase Storage.
-  Future<void> generateAndUpload() async {
+  /// Generate PDF and, unless [isGuestMode], upload it to Firebase Storage.
+  /// Guests keep the PDF local — Storage requires a signed-in user.
+  Future<void> generateAndUpload({required bool isGuestMode}) async {
     final paths = displayPaths;
     if (paths.isEmpty) return;
 
@@ -152,6 +153,13 @@ class DocumentScannerProvider extends ChangeNotifier {
       notifyListeners();
 
       _localPdfPath = await _service.generatePdf(paths, _title);
+
+      if (isGuestMode) {
+        _uploadedPdfUrl = null;
+        _state = DocumentScannerState.done;
+        notifyListeners();
+        return;
+      }
 
       // Upload to Firebase Storage
       _state = DocumentScannerState.uploading;

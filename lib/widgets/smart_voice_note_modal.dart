@@ -160,15 +160,19 @@ class _SmartVoiceNoteModalState extends State<SmartVoiceNoteModal>
 
       final classification = const VoiceClassifierService().classify(_transcript);
 
+      if (!mounted) return;
+      final isGuestMode = context.read<NotesProvider>().isGuestMode;
       String? uploadedVoicePath;
-      try {
-        final bytes = await file_helper.getFileBytes(path);
-        if (bytes != null) {
-          final fileName = 'voice_notes/${const Uuid().v4()}.m4a';
-          uploadedVoicePath = await StorageHelper.uploadToFirebase(bytes, fileName, 'audio/mp4');
+      if (!isGuestMode) {
+        try {
+          final bytes = await file_helper.getFileBytes(path);
+          if (bytes != null) {
+            final fileName = 'voice_notes/${const Uuid().v4()}.m4a';
+            uploadedVoicePath = await StorageHelper.uploadToFirebase(bytes, fileName, 'audio/mp4');
+          }
+        } catch (e) {
+          debugPrint('SmartVoiceNote upload error: $e');
         }
-      } catch (e) {
-        debugPrint('SmartVoiceNote upload error: $e');
       }
 
       final now = DateTime.now();

@@ -1,10 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/note.dart';
 import '../utils/notification_service.dart';
+
+const _kGuestModeKey = 'guest_mode_enabled';
+const _kGuestNotesKey = 'guest_notes';
 
 enum SortOrder { newest, oldest, alphabetical }
 
@@ -63,6 +67,7 @@ class NotesProvider extends ChangeNotifier {
   bool _groupByDate = false;
   bool _isLoading = true;
   bool _remindersRescheduled = false;
+  bool _isGuestMode = false;
   String _searchQuery = '';
   NoteFilter _filter = NoteFilter.none;
   TimeOfDay _reminderTime = const TimeOfDay(hour: 9, minute: 0);
@@ -87,6 +92,7 @@ class NotesProvider extends ChangeNotifier {
   bool get isGridView => _isGridView;
   bool get groupByDate => _groupByDate;
   bool get isLoading => _isLoading;
+  bool get isGuestMode => _isGuestMode;
   String get searchQuery => _searchQuery;
   NoteFilter get filter => _filter;
   bool get hasActiveFilters => _filter.hasActiveFilters;
@@ -114,6 +120,15 @@ class NotesProvider extends ChangeNotifier {
 
   // Targeted update of OCR text — avoids overwriting other fields
   Future<void> updateNoteOcrText(String noteId, String? ocrText) async {
+    if (_isGuestMode) {
+      final idx = _notes.indexWhere((n) => n.id == noteId);
+      if (idx != -1) {
+        _notes[idx] = _notes[idx].copyWith(ocrText: ocrText, clearOcrText: ocrText == null);
+        notifyListeners();
+        await _persistGuestNotes();
+      }
+      return;
+    }
     try {
       await _notesCollection.doc(noteId).update({'ocrText': ocrText});
     } catch (e) {
@@ -295,7 +310,13 @@ class NotesProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _isDarkMode = prefs.getBool('darkMode') ?? false;
     _themeColorIndex = prefs.getInt('themeColorIndex') ?? 21;
+    _isGuestMode = prefs.getBool(_kGuestModeKey) ?? false;
     notifyListeners();
+    // So a relaunching guest lands straight in MainScreen instead of
+    // LoginScreen — this runs well before AuthWrapper's splash timer ends.
+    if (_isGuestMode) {
+      await loadGuestNotes();
+    }
   }
 
   // ── Load notes from Firestore with real-time updates ─────────────────────
@@ -358,6 +379,110 @@ class NotesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Guest mode — local-only notes, no Firebase account required ──────────
+
+  /// Call this when the user taps "Continue without an account."
+  Future<void> enableGuestMode() async {
+    if (_isGuestMode) return;
+    _isGuestMode = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kGuestModeKey, true);
+    await loadGuestNotes();
+    notifyListeners();
+  }
+
+  /// Guest-mode analogue of [loadNotes] — reads notes from SharedPreferences
+  /// instead of opening a Firestore stream.
+  Future<void> loadGuestNotes() async {
+    _isLoading = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    _isDarkMode = prefs.getBool('darkMode') ?? false;
+    _themeColorIndex = prefs.getInt('themeColorIndex') ?? 21;
+    _notificationsEnabled = prefs.getBool('notifications') ?? true;
+    _appLockEnabled = prefs.getBool('appLock') ?? false;
+    _biometricEnabled = prefs.getBool('biometric') ?? true;
+    _isGridView = prefs.getBool('gridView') ?? false;
+    _groupByDate = prefs.getBool('groupByDate') ?? false;
+    final reminderHour = prefs.getInt('reminderHour') ?? 9;
+    final reminderMinute = prefs.getInt('reminderMinute') ?? 0;
+    _reminderTime = TimeOfDay(hour: reminderHour, minute: reminderMinute);
+    if (_notificationsEnabled) {
+      await NotificationService.scheduleDailyReminder(_reminderTime);
+    }
+    await _loadCustomOrder();
+
+    final raw = prefs.getString(_kGuestNotesKey);
+    _notes = raw == null || raw.isEmpty
+        ? []
+        : (jsonDecode(raw) as List<dynamic>)
+            .map((e) => Note.fromJson(e as Map<String, dynamic>))
+            .toList();
+    _applyCustomOrder(_notes);
+    _isLoading = false;
+
+    if (!_remindersRescheduled) {
+      _remindersRescheduled = true;
+      final now = DateTime.now();
+      for (final note in _notes) {
+        if (note.reminderDateTime != null && note.reminderDateTime!.isAfter(now)) {
+          NotificationService.scheduleNoteReminder(
+            noteId: note.id,
+            noteTitle: note.title,
+            reminderTime: note.reminderDateTime!,
+          );
+        }
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<void> _persistGuestNotes() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kGuestNotesKey, jsonEncode(_notes.map((n) => n.toJson()).toList()));
+  }
+
+  /// Call this when a guest taps "Sign In" — clears the local guest flag and
+  /// cached notes. Only call this AFTER any migration has completed.
+  Future<void> clearGuestData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kGuestNotesKey);
+    await prefs.setBool(_kGuestModeKey, false);
+    _isGuestMode = false;
+    notifyListeners();
+  }
+
+  /// Copies any locally-stored guest notes into the newly signed-in user's
+  /// Firestore collection, then clears the local guest cache. Note: this
+  /// migrates note metadata only — local voicePath/imagePath/pdfPath values
+  /// are not re-uploaded to Storage, so attachments stay device-local.
+  Future<void> migrateGuestNotesToFirestore(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_kGuestNotesKey);
+    if (raw == null || raw.isEmpty) return;
+    final guestNotes = (jsonDecode(raw) as List<dynamic>)
+        .map((e) => Note.fromJson(e as Map<String, dynamic>))
+        .toList();
+    if (guestNotes.isEmpty) {
+      await prefs.remove(_kGuestNotesKey);
+      await prefs.setBool(_kGuestModeKey, false);
+      _isGuestMode = false;
+      return;
+    }
+
+    final collection = FirebaseFirestore.instance.collection('users').doc(userId).collection('notes');
+    for (final note in guestNotes) {
+      try {
+        await collection.doc(note.id).set(note.toFirestore());
+      } catch (e) {
+        debugPrint('Error migrating guest note ${note.id}: $e');
+      }
+    }
+    await prefs.remove(_kGuestNotesKey);
+    await prefs.setBool(_kGuestModeKey, false);
+    _isGuestMode = false;
+  }
+
   /// Call this when the user signs out — clears all in-memory state.
   Future<void> clearOnSignOut() async {
     _notesSubscription?.cancel();
@@ -394,6 +519,20 @@ class NotesProvider extends ChangeNotifier {
 
   // Add note to Firestore
   Future<void> addNote(Note note) async {
+    if (_isGuestMode) {
+      _notes.insert(0, note);
+      _applyCustomOrder(_notes);
+      notifyListeners();
+      await _persistGuestNotes();
+      if (note.reminderDateTime != null) {
+        await NotificationService.scheduleNoteReminder(
+          noteId: note.id,
+          noteTitle: note.title,
+          reminderTime: note.reminderDateTime!,
+        );
+      }
+      return;
+    }
     try {
       await _notesCollection.doc(note.id).set(note.toFirestore());
       if (note.reminderDateTime != null) {
@@ -411,6 +550,23 @@ class NotesProvider extends ChangeNotifier {
 
   // Update note in Firestore
   Future<void> updateNote(Note note) async {
+    if (_isGuestMode) {
+      final idx = _notes.indexWhere((n) => n.id == note.id);
+      if (idx != -1) {
+        _notes[idx] = note;
+        notifyListeners();
+        await _persistGuestNotes();
+      }
+      await NotificationService.cancelNoteReminder(note.id);
+      if (note.reminderDateTime != null) {
+        await NotificationService.scheduleNoteReminder(
+          noteId: note.id,
+          noteTitle: note.title,
+          reminderTime: note.reminderDateTime!,
+        );
+      }
+      return;
+    }
     try {
       await _notesCollection.doc(note.id).update(note.toFirestore());
       await NotificationService.cancelNoteReminder(note.id);
@@ -429,6 +585,13 @@ class NotesProvider extends ChangeNotifier {
 
   // Delete note from Firestore
   Future<void> deleteNote(String id) async {
+    if (_isGuestMode) {
+      await NotificationService.cancelNoteReminder(id);
+      _notes.removeWhere((n) => n.id == id);
+      notifyListeners();
+      await _persistGuestNotes();
+      return;
+    }
     try {
       await NotificationService.cancelNoteReminder(id);
       await _notesCollection.doc(id).delete();

@@ -181,6 +181,13 @@ class _LoginScreenState extends State<LoginScreen>
 
   static bool get _supportsAppleSignIn => !kIsWeb && Platform.isIOS;
 
+  Future<void> _continueAsGuest() async {
+    if (_isSigningIn) return;
+    await context.read<NotesProvider>().enableGuestMode();
+    // AuthWrapper watches NotesProvider.isGuestMode and swaps to MainScreen —
+    // same "the wrapper handles navigation" pattern as the sign-in handlers.
+  }
+
   String _generateNonce([int length = 32]) {
     const charset =
         '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._';
@@ -457,7 +464,31 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ],
 
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 18),
+                    FadeTransition(
+                      opacity: _buttonFade,
+                      child: SlideTransition(
+                        position: _buttonSlide,
+                        child: TextButton(
+                          onPressed: _isSigningIn ? null : _continueAsGuest,
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white.withOpacity(0.85),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: const Text(
+                            'Continue without an account',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.underline,
+                              decorationColor: Colors.white54,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
 
                     // Footer
                     FadeTransition(

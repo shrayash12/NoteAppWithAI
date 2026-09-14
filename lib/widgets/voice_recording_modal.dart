@@ -174,11 +174,23 @@ class _VoiceRecordingModalState extends State<VoiceRecordingModal> {
 
   Future<void> _saveRecording() async {
     if (_recordingPath == null && _webBlobUrl == null) return;
+
+    final notesProvider = context.read<NotesProvider>();
+    if (notesProvider.isGuestMode && kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Voice notes require signing in on web.')),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     String? finalVoicePath;
 
-    if (kIsWeb && _webBlobUrl != null) {
+    if (notesProvider.isGuestMode && _recordingPath != null) {
+      // Guests skip Storage entirely — keep the recording local.
+      finalVoicePath = _recordingPath;
+    } else if (kIsWeb && _webBlobUrl != null) {
       try {
         // Fetch blob URL and upload to Firebase Storage
         final response = await http.get(Uri.parse(_webBlobUrl!));
@@ -227,7 +239,6 @@ class _VoiceRecordingModalState extends State<VoiceRecordingModal> {
       return;
     }
 
-    final notesProvider = context.read<NotesProvider>();
     final now = DateTime.now();
 
     final note = Note(
